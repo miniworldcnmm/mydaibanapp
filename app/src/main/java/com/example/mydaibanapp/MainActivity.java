@@ -147,17 +147,17 @@ public class MainActivity extends AppCompatActivity implements TaskAdapter.OnTas
         if (id == R.id.filter_all) {
             currentFilter = 0;
             observeTasks();
-            getSupportActionBar().setTitle("全部任务");
+            getSupportActionBar().setTitle("全部待办");
             return true;
         } else if (id == R.id.filter_active) {
             currentFilter = 1;
             observeTasks();
-            getSupportActionBar().setTitle("我的任务");
+            getSupportActionBar().setTitle("我的待办");
             return true;
         } else if (id == R.id.filter_completed) {
             currentFilter = 2;
             observeTasks();
-            getSupportActionBar().setTitle("已完成任务");
+            getSupportActionBar().setTitle("已完成待办");
             return true;
         }
         return super.onOptionsItemSelected(item);
