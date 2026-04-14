@@ -16,6 +16,9 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE isCompleted = 1 ORDER BY createTime DESC")
     fun getCompletedTasks(): Flow<List<Task>>
 
+    @Query("SELECT * FROM tasks ORDER BY createTime DESC")
+    fun getAllTasks(): Flow<List<Task>>
+
     @Insert
     suspend fun insertTask(task: Task)
 

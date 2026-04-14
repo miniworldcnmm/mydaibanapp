@@ -6,6 +6,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.mydaibanapp.R
 import com.example.mydaibanapp.data.dao.TaskDao
 import com.example.mydaibanapp.data.database.AppDatabase
 import com.example.mydaibanapp.data.entity.Task
@@ -59,8 +60,7 @@ class TaskActivity : AppCompatActivity() {
         binding.rvTasks.layoutManager = LinearLayoutManager(this)
 
         // 观察任务列表变化
-        viewModel.activeTasks.observe(this) { updateTaskList() }
-        viewModel.completedTasks.observe(this) { updateTaskList() }
+        viewModel.allTasks.observe(this) { updateTaskList() }
 
         // 添加任务按钮点击事件
         binding.fabAddTask.setOnClickListener {
@@ -154,13 +154,12 @@ class TaskActivity : AppCompatActivity() {
     }
 
     private fun updateTaskList() {
-        val activeTasks = viewModel.activeTasks.value ?: emptyList()
-        val completedTasks = viewModel.completedTasks.value ?: emptyList()
+        val allTasks = viewModel.allTasks.value ?: emptyList()
         val listToShow = when(currentFilter) {
-            FilterType.ALL -> activeTasks + completedTasks
-            FilterType.ACTIVE -> activeTasks
-            FilterType.COMPLETED -> completedTasks
+            FilterType.ALL -> allTasks
+            FilterType.ACTIVE -> allTasks.filter { !it.isCompleted }
+            FilterType.COMPLETED -> allTasks.filter { it.isCompleted }
         }
-        adapter.submitList(listToShow.sortedByDescending { it.createTime })
+        adapter.submitList(listToShow)
     }
 }

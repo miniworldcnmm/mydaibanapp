@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
     val activeTasks: LiveData<List<Task>> = repository.activeTasks.asLiveData()
     val completedTasks: LiveData<List<Task>> = repository.completedTasks.asLiveData()
+    val allTasks: LiveData<List<Task>> = repository.allTasks.asLiveData()
 
     fun insertTask(task: Task) = viewModelScope.launch {
         repository.insertTask(task)
