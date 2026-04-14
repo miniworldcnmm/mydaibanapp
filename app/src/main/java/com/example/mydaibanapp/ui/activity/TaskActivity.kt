@@ -20,6 +20,11 @@ class TaskActivity : AppCompatActivity() {
     private lateinit var binding: ActivityTaskBinding
     private lateinit var viewModel: TaskViewModel
     private lateinit var adapter: TaskAdapter
+    private var currentFilter = FilterType.ACTIVE
+
+    enum class FilterType {
+        ALL, ACTIVE, COMPLETED
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,9 +59,8 @@ class TaskActivity : AppCompatActivity() {
         binding.rvTasks.layoutManager = LinearLayoutManager(this)
 
         // 观察任务列表变化
-        viewModel.activeTasks.observe(this) { tasks ->
-            adapter.submitList(tasks)
-        }
+        viewModel.activeTasks.observe(this) { updateTaskList() }
+        viewModel.completedTasks.observe(this) { updateTaskList() }
 
         // 添加任务按钮点击事件
         binding.fabAddTask.setOnClickListener {
@@ -66,22 +70,30 @@ class TaskActivity : AppCompatActivity() {
 
     private fun showAddTaskDialog() {
         val dialogBinding = DialogAddTaskBinding.inflate(LayoutInflater.from(this))
-        AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this)
             .setView(dialogBinding.root)
             .setTitle("添加新任务")
-            .setPositiveButton("添加") { _, _ ->
+            .setPositiveButton("添加", null)
+            .setNegativeButton("取消", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val title = dialogBinding.etTitle.text.toString().trim()
                 val description = dialogBinding.etDescription.text.toString().trim()
-                if (title.isNotEmpty()) {
-                    val task = Task(
-                        title = title,
-                        description = description.takeIf { it.isNotEmpty() }
-                    )
-                    viewModel.insertTask(task)
+                if (title.isEmpty()) {
+                    dialogBinding.etTitle.error = "任务标题不能为空"
+                    return@setOnClickListener
                 }
+                val task = Task(
+                    title = title,
+                    description = description.takeIf { it.isNotEmpty() }
+                )
+                viewModel.insertTask(task)
+                dialog.dismiss()
             }
-            .setNegativeButton("取消", null)
-            .show()
+        }
+        dialog.show()
     }
 
     private fun showEditTaskDialog(task: Task) {
@@ -89,21 +101,66 @@ class TaskActivity : AppCompatActivity() {
         dialogBinding.etTitle.setText(task.title)
         dialogBinding.etDescription.setText(task.description)
 
-        AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this)
             .setView(dialogBinding.root)
             .setTitle("编辑任务")
-            .setPositiveButton("保存") { _, _ ->
+            .setPositiveButton("保存", null)
+            .setNegativeButton("取消", null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val title = dialogBinding.etTitle.text.toString().trim()
                 val description = dialogBinding.etDescription.text.toString().trim()
-                if (title.isNotEmpty()) {
-                    val updatedTask = task.copy(
-                        title = title,
-                        description = description.takeIf { it.isNotEmpty() }
-                    )
-                    viewModel.updateTask(updatedTask)
+                if (title.isEmpty()) {
+                    dialogBinding.etTitle.error = "任务标题不能为空"
+                    return@setOnClickListener
                 }
+                val updatedTask = task.copy(
+                    title = title,
+                    description = description.takeIf { it.isNotEmpty() }
+                )
+                viewModel.updateTask(updatedTask)
+                dialog.dismiss()
             }
-            .setNegativeButton("取消", null)
-            .show()
+        }
+        dialog.show()
+    }
+
+    override fun onCreateOptionsMenu(menu: android.view.Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_task_filter, menu)
+        supportActionBar?.title = when(currentFilter) {
+            FilterType.ALL -> "全部任务"
+            FilterType.ACTIVE -> "我的任务"
+            FilterType.COMPLETED -> "已完成任务"
+        }
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        currentFilter = when(item.itemId) {
+            R.id.filter_all -> FilterType.ALL
+            R.id.filter_active -> FilterType.ACTIVE
+            R.id.filter_completed -> FilterType.COMPLETED
+            else -> currentFilter
+        }
+        updateTaskList()
+        supportActionBar?.title = when(currentFilter) {
+            FilterType.ALL -> "全部任务"
+            FilterType.ACTIVE -> "我的任务"
+            FilterType.COMPLETED -> "已完成任务"
+        }
+        return true
+    }
+
+    private fun updateTaskList() {
+        val activeTasks = viewModel.activeTasks.value ?: emptyList()
+        val completedTasks = viewModel.completedTasks.value ?: emptyList()
+        val listToShow = when(currentFilter) {
+            FilterType.ALL -> activeTasks + completedTasks
+            FilterType.ACTIVE -> activeTasks
+            FilterType.COMPLETED -> completedTasks
+        }
+        adapter.submitList(listToShow.sortedByDescending { it.createTime })
     }
 }

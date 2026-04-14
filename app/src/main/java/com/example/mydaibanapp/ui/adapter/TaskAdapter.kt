@@ -19,6 +19,9 @@ class TaskAdapter(
         fun bind(task: Task) {
             binding.tvTaskTitle.text = task.title
             binding.tvTaskDescription.text = task.description ?: "无描述"
+
+            // 先清空监听，避免复用的时候触发旧回调
+            binding.cbTaskCompleted.setOnCheckedChangeListener(null)
             binding.cbTaskCompleted.isChecked = task.isCompleted
 
             // 设置删除线效果
