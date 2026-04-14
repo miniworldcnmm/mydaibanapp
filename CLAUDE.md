@@ -51,6 +51,8 @@ com.example.mydaibanapp
 7. 状态栏重叠问题：根布局添加fitsSystemWindows="true"，让系统自动为状态栏留出空间
 8. FAB按钮白色圆圈：系统自带ic_menu_add图标有白色圆圈背景，替换为自定义纯净矢量图标ic_add.xml，并设置borderWidth="0dp"
 9. Toolbar蓝色横条：Toolbar和AppBarLayout背景改为页面背景色，elevation设为0去掉阴影，视觉上融入页面
+10. Stream#toList()兼容性：toList()需要API 34，minSDK 29的项目必须用collect(Collectors.toList())替代
+11. Task缺少equals实现：DiffUtil的areContentsTheSame依赖equals()，实体类必须实现equals()和hashCode()
 
 ## 开发规范
 - 遵循MVVM架构分层，各层职责明确，低耦合高内聚
@@ -59,3 +61,5 @@ com.example.mydaibanapp
 - 界面交互友好，操作有反馈，危险操作有二次确认
 - 自定义图标使用矢量drawable（res/drawable/），不依赖系统图标避免样式不可控
 - Toolbar如需隐藏视觉效果，用背景色融入+elevation=0dp的方式，保留功能（菜单等）
+- 注意API兼容性：minSDK 29，避免使用高版本API（如Stream#toList()需API 34），可用`JAVA_HOME="D:/android/jbr" ./gradlew lint`检查
+- Room实体类必须实现equals()和hashCode()，否则DiffUtil无法正确比较内容变化
