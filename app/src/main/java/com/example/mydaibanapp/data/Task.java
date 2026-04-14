@@ -2,6 +2,7 @@ package com.example.mydaibanapp.data;
 
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
+import java.util.Objects;
 
 @Entity(tableName = "tasks")
 public class Task {
@@ -28,4 +29,18 @@ public class Task {
     public void setCompleted(boolean completed) { isCompleted = completed; }
     public long getCreateTime() { return createTime; }
     public void setCreateTime(long createTime) { this.createTime = createTime; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Task task = (Task) o;
+        return id == task.id && isCompleted == task.isCompleted && createTime == task.createTime
+                && Objects.equals(title, task.title) && Objects.equals(description, task.description);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, title, description, isCompleted, createTime);
+    }
 }

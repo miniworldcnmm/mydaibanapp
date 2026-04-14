@@ -16,6 +16,7 @@ import com.example.mydaibanapp.databinding.ActivityTaskBinding;
 import com.example.mydaibanapp.databinding.DialogAddTaskBinding;
 import com.example.mydaibanapp.viewmodel.TaskViewModel;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity implements TaskAdapter.OnTaskClickListener {
     private ActivityTaskBinding binding;
@@ -53,11 +54,11 @@ public class MainActivity extends AppCompatActivity implements TaskAdapter.OnTas
     }
 
     private List<Task> filterActiveTasks(List<Task> tasks) {
-        return tasks.stream().filter(task -> !task.isCompleted()).toList();
+        return tasks.stream().filter(task -> !task.isCompleted()).collect(Collectors.toList());
     }
 
     private List<Task> filterCompletedTasks(List<Task> tasks) {
-        return tasks.stream().filter(Task::isCompleted).toList();
+        return tasks.stream().filter(Task::isCompleted).collect(Collectors.toList());
     }
 
     private void showAddTaskDialog() {
