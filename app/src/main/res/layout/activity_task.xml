@@ -19,8 +19,19 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="@color/white"
-            app:titleTextColor="@color/hand_drawn_blue"
-            android:title="待完成" />
+            app:title=""
+            app:titleTextColor="@color/hand_drawn_blue">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="待完成"
+                android:textSize="24sp"
+                android:textColor="@color/hand_drawn_blue"
+                android:textStyle="bold"
+                android:layout_marginStart="4dp" />
+
+        </com.google.android.material.appbar.MaterialToolbar>
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -34,15 +45,18 @@
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAddTask"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
         android:src="@drawable/ic_add"
         android:contentDescription="添加任务"
-        app:tint="@null"
+        app:tint="@color/white"
         app:backgroundTint="@color/hand_drawn_blue"
+        app:elevation="0dp"
+        app:pressedTranslationZ="0dp"
         app:borderWidth="0dp"
+        app:maxImageSize="24dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="24dp" />
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="32dp" />
 </androidx.constraintlayout.widget.ConstraintLayout>

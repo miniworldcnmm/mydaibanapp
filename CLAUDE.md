@@ -53,7 +53,7 @@ com.example.mydaibanapp
 9. Toolbar蓝色横条：Toolbar和AppBarLayout背景改为页面背景色，elevation设为0去掉阴影，视觉上融入页面
 10. Stream#toList()兼容性：toList()需要API 34，minSDK 29的项目必须用collect(Collectors.toList())替代
 11. Task缺少equals实现：DiffUtil的areContentsTheSame依赖equals()，实体类必须实现equals()和hashCode()
-12. 界面优化：将页面浅黄色背景改为纯白色，顶部标题从"我的待办"改为"待完成"
+12. 界面优化：全页面改为纯白色背景，左上角标题改为蓝色加粗24sp的"待完成"，完全移除原来的"我的待办"标题，优化右下角添加按钮大小和边距避免过于贴边
 
 ## 开发规范
 - 遵循MVVM架构分层，各层职责明确，低耦合高内聚

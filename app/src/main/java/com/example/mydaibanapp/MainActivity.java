@@ -30,6 +30,7 @@ public class MainActivity extends AppCompatActivity implements TaskAdapter.OnTas
         binding = ActivityTaskBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         setSupportActionBar(binding.toolbar);
+        getSupportActionBar().setDisplayShowTitleEnabled(false); // 完全禁用系统标题显示
 
         adapter = new TaskAdapter(this);
         binding.rvTasks.setAdapter(adapter);
