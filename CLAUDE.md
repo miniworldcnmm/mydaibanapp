@@ -53,6 +53,7 @@ com.example.mydaibanapp
 9. Toolbar蓝色横条：Toolbar和AppBarLayout背景改为页面背景色，elevation设为0去掉阴影，视觉上融入页面
 10. Stream#toList()兼容性：toList()需要API 34，minSDK 29的项目必须用collect(Collectors.toList())替代
 11. Task缺少equals实现：DiffUtil的areContentsTheSame依赖equals()，实体类必须实现equals()和hashCode()
+12. 界面优化：将页面浅黄色背景改为纯白色，顶部标题从"我的待办"改为"待完成"
 
 ## 开发规范
 - 遵循MVVM架构分层，各层职责明确，低耦合高内聚
@@ -63,3 +64,4 @@ com.example.mydaibanapp
 - Toolbar如需隐藏视觉效果，用背景色融入+elevation=0dp的方式，保留功能（菜单等）
 - 注意API兼容性：minSDK 29，避免使用高版本API（如Stream#toList()需API 34），可用`JAVA_HOME="D:/android/jbr" ./gradlew lint`检查
 - Room实体类必须实现equals()和hashCode()，否则DiffUtil无法正确比较内容变化
+- **每次改完代码必须运行 `JAVA_HOME="D:/android/jbr" ./gradlew lint` 和 `JAVA_HOME="D:/android/jbr" ./gradlew assembleDebug` 检查错误，确认无错误后再提交git**
