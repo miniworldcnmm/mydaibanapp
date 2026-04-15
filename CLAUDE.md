@@ -54,6 +54,9 @@ com.example.mydaibanapp
 10. Stream#toList()兼容性：toList()需要API 34，minSDK 29的项目必须用collect(Collectors.toList())替代
 11. Task缺少equals实现：DiffUtil的areContentsTheSame依赖equals()，实体类必须实现equals()和hashCode()
 12. 界面优化：全页面改为纯白色背景，左上角标题改为蓝色加粗24sp的"待完成"，完全移除原来的"我的待办"标题，优化右下角添加按钮大小和边距避免过于贴边
+13. 底部导航栏：添加待办和设置页面切换，使用BottomNavigationView实现
+14. 深色模式：设置页面添加深色模式开关，首次启动自动检测系统主题，用户切换即时全局生效，设置永久保存
+15. Fragment架构：MainActivity改为Fragment容器，TaskListFragment承载任务列表，SettingsFragment承载设置页面
 
 ## 开发规范
 - 遵循MVVM架构分层，各层职责明确，低耦合高内聚
