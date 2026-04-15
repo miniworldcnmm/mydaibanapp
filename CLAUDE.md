@@ -21,13 +21,17 @@ com.example.mydaibanapp
 │   └── TaskRepository.java
 ├── viewmodel/     # ViewModel层，处理业务逻辑，持有UI数据
 │   └── TaskViewModel.java
+├── fragment/      # Fragment层
+│   ├── TaskListFragment.java  # 任务列表页面
+│   ├── SettingsFragment.java  # 设置页面
+│   └── AddTaskBottomSheet.java # 底部滑出添加任务面板
 ├── adapter/       # 列表适配器
 │   └── TaskAdapter.java
-└── MainActivity.java # 主界面
+└── MainActivity.java # 主界面（Fragment容器）
 ```
 
 ## 功能列表
-✅ 添加新任务（支持标题和可选描述，空标题有错误提示）
+✅ 添加新任务（底部滑出面板BottomSheet，自动弹出键盘，标题为空时发送按钮禁用）
 ✅ 编辑现有任务
 ✅ 删除任务（带确认对话框，防止误删）
 ✅ 标记任务为完成/未完成（完成后显示删除线效果）
@@ -57,6 +61,11 @@ com.example.mydaibanapp
 13. 底部导航栏：添加待办和设置页面切换，使用BottomNavigationView实现
 14. 深色模式：设置页面添加深色模式开关，首次启动自动检测系统主题，用户切换即时全局生效，设置永久保存
 15. Fragment架构：MainActivity改为Fragment容器，TaskListFragment承载任务列表，SettingsFragment承载设置页面
+16. 添加任务改为BottomSheet：AlertDialog替换为BottomSheetDialogFragment，底部滑出面板+自动弹键盘+发送按钮状态控制，编辑任务仍用AlertDialog
+17. BottomSheet键盘弹出：onViewCreated中requestFocus不够，需在onStart中设置SOFT_INPUT_STATE_ALWAYS_VISIBLE + postDelayed(200ms) SHOW_FORCED双保险
+18. TextInputLayout浮动标签：如需纯placeholder效果（聚焦后hint消失而非浮动变蓝），设app:hintEnabled="false"并将hint放在EditText上
+19. inputType与imeOptions配合：textCapSentences是多行类型，部分键盘会忽略imeOptions="actionDone"，需改为text|textCapSentences确保键盘显示完成按钮
+20. ImageView使用app:tint：lint要求ImageView/ImageButton必须用app:tint替代android:tint（UseAppTint规则）
 
 ## 开发规范
 - 遵循MVVM架构分层，各层职责明确，低耦合高内聚

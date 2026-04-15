@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">我的待办</string>
+    <string name="hint_task_title">准备做什么？</string>
+    <string name="hint_task_description">描述</string>
+    <string name="btn_send">发送</string>
 </resources>

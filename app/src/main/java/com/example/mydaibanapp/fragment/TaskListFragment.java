@@ -58,7 +58,12 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
         viewModel = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
         observeTasks();
 
-        binding.fabAddTask.setOnClickListener(v -> showAddTaskDialog());
+        binding.fabAddTask.setOnClickListener(v -> {
+            if (getChildFragmentManager().findFragmentByTag("AddTaskBottomSheet") != null) {
+                return;
+            }
+            new AddTaskBottomSheet().show(getChildFragmentManager(), "AddTaskBottomSheet");
+        });
     }
 
     private void observeTasks() {
@@ -79,31 +84,6 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
 
     private List<Task> filterCompletedTasks(List<Task> tasks) {
         return tasks.stream().filter(Task::isCompleted).collect(Collectors.toList());
-    }
-
-    private void showAddTaskDialog() {
-        DialogAddTaskBinding dialogBinding = DialogAddTaskBinding.inflate(LayoutInflater.from(requireContext()));
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                .setView(dialogBinding.getRoot())
-                .setTitle("添加新任务")
-                .setPositiveButton("添加", null)
-                .setNegativeButton("取消", null)
-                .create();
-
-        dialog.setOnShowListener(d -> {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                String title = dialogBinding.etTitle.getText().toString().trim();
-                String description = dialogBinding.etDescription.getText().toString().trim();
-                if (title.isEmpty()) {
-                    dialogBinding.etTitle.setError("任务标题不能为空");
-                    return;
-                }
-                Task task = new Task(title, description.isEmpty() ? null : description);
-                viewModel.insertTask(task);
-                dialog.dismiss();
-            });
-        });
-        dialog.show();
     }
 
     private void showEditTaskDialog(Task task) {
