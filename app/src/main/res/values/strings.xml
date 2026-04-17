@@ -3,4 +3,11 @@
     <string name="hint_task_title">准备做什么？</string>
     <string name="hint_task_description">描述</string>
     <string name="btn_send">发送</string>
+    <string name="search_hint">搜索任务…</string>
+    <string name="priority_none">无</string>
+    <string name="priority_low">低</string>
+    <string name="priority_medium">中</string>
+    <string name="priority_high">高</string>
+    <string name="filter_priority">按优先级</string>
+    <string name="priority_label">优先级</string>
 </resources>

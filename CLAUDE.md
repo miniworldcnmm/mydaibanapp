@@ -1,6 +1,6 @@
 # 我的待办 - 手绘风格待办APP
 ## 项目介绍
-这是一个简单易用的安卓待办APP，采用手绘风格的界面设计，支持任务的添加、编辑、删除、标记完成、筛选查看等功能，专为安卓开发小白打造，代码结构清晰易懂。
+这是一个简单易用的安卓待办APP，采用手绘风格的界面设计，支持任务的添加、编辑、删除、标记完成、筛选查看、搜索、优先级标记等功能，专为安卓开发小白打造，代码结构清晰易懂。
 
 ## 技术栈
 - 语言：纯Java，无Kotlin依赖，兼容性更好
@@ -14,19 +14,19 @@
 ```
 com.example.mydaibanapp
 ├── data/          # 数据层
-│   ├── Task.java       # 任务实体类（含dueDate字段）
-│   ├── TaskDao.java    # 数据库操作接口（含日期范围查询）
-│   └── AppDatabase.java # Room数据库配置（v2迁移）
+│   ├── Task.java       # 任务实体类（含dueDate、priority字段）
+│   ├── TaskDao.java    # 数据库操作接口（含日期范围查询、LIKE搜索、优先级筛选）
+│   └── AppDatabase.java # Room数据库配置（v3迁移）
 ├── repository/    # 数据仓库层，统一管理数据源
 │   └── TaskRepository.java
 ├── viewmodel/     # ViewModel层，处理业务逻辑，持有UI数据
 │   └── TaskViewModel.java
 ├── fragment/      # Fragment层
-│   ├── TaskListFragment.java  # 任务列表页面
+│   ├── TaskListFragment.java  # 任务列表页面（含搜索+优先级筛选）
 │   ├── CalendarFragment.java  # 日历页面
-│   ├── DateTaskFragment.java  # 日期待办页面
+│   ├── DateTaskFragment.java  # 日期待办页面（含优先级ChipGroup编辑）
 │   ├── SettingsFragment.java  # 设置页面
-│   └── AddTaskBottomSheet.java # 底部滑出添加任务面板
+│   └── AddTaskBottomSheet.java # 底部滑出添加任务面板（含优先级选择）
 ├── adapter/       # 列表适配器
 │   └── TaskAdapter.java
 └── MainActivity.java # 主界面（Fragment容器，三tab导航）
@@ -43,6 +43,10 @@ com.example.mydaibanapp
 ✅ 日历功能：底部导航三tab（待办|日历|设置），全屏月视图日历，月份左右切换，今天高亮椭圆，有待办日期蓝点
 ✅ 日期待办页面：点击日历日期滑动进入，顶部左右切换日期，显示当日待办列表，空状态提示，FAB添加（自动预设日期）
 ✅ 任务日期：添加/编辑任务时可选择日期（DatePicker），可清除，日历蓝点仅显示有dueDate的任务
+✅ 任务搜索：Toolbar搜索按钮点击展开椭圆搜索框（动画从右上展开），LIKE模糊搜索标题和描述，实时过滤结果，清除按钮一键重置
+✅ 任务优先级：4级标记（无/低/中/高），列表项彩色圆点指示，BottomSheet/编辑对话框ChipGroup选择，菜单子菜单筛选
+✅ 筛选状态保存：切换底部tab或旋转屏幕不丢失筛选和搜索状态（ViewModel保存+onSaveInstanceState）
+✅ 空状态提示：搜索无结果/筛选无匹配时显示上下文提示文字
 
 ## 项目配置
 - 最低SDK版本：29（Android 10）
@@ -75,6 +79,13 @@ com.example.mydaibanapp
 22. 编辑任务保留createTime：创建新Task对象时必须setCreateTime(task.getCreateTime())，否则createTime被重置为当前时间导致排序错乱
 23. Fragment切换与back stack：DateTaskFragment用replace+addToBackStack跳转，切换底部tab时需先popBackStackImmediate()，否则覆盖Fragment残留显示
 24. GridLayout首次渲染高度为0：不能用post()或OnGlobalLayoutListener等异步方式获取高度，需要从屏幕尺寸直接计算格子高度
+25. LiveData观察者堆叠：observe()只能在onViewCreated()调一次，筛选变更时调refreshList()而非重新observeTasks()，否则每次筛选切换叠加观察者导致回调爆炸+列表闪烁
+26. 编辑任务保留priority：和createTime一样，DateTaskFragment编辑对话框必须setPriority(task.getPriority())，否则priority被重置为0（坑点#22的翻版）
+27. 优先级排序用客户端Comparator：不要建DAO的ORDER BY priority查询（会成死代码），在applyFilters()里用result.sort()客户端排序即可，排序逻辑：priority降序→createTime降序
+28. 空状态提示：搜索无结果/筛选无匹配时必须有上下文提示文字（tvEmptyState），不能只留空白RecyclerView
+29. 筛选状态保存：currentFilter和currentPriorityFilter存ViewModel（切tab不丢），isSearchVisible存onSaveInstanceState（旋转不丢），恢复时在onViewCreated()从ViewModel+savedInstanceState重建UI
+30. Room的@Query参数化防SQL注入：Room用prepared statement，:query参数不会被注入，但LIKE通配符（%和_）在用户输入中不会被转义，本地APP影响不大
+31. ChipGroup selectionRequired=false风险：用户可能取消所有chip选中导致priority值停留在上一次设置，需注意或改用selectionRequired=true
 
 ## 开发规范
 - 遵循MVVM架构分层，各层职责明确，低耦合高内聚

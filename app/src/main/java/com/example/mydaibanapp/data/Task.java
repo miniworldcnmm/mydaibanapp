@@ -13,6 +13,7 @@ public class Task {
     private boolean isCompleted;
     private long createTime = System.currentTimeMillis();
     private Long dueDate; // 待办日期的时间戳，null表示未设置
+    private int priority = 0; // 0=无 1=低 2=中 3=高
 
     public Task(String title, String description) {
         this.title = title;
@@ -32,6 +33,8 @@ public class Task {
     public void setCreateTime(long createTime) { this.createTime = createTime; }
     public Long getDueDate() { return dueDate; }
     public void setDueDate(Long dueDate) { this.dueDate = dueDate; }
+    public int getPriority() { return priority; }
+    public void setPriority(int priority) { this.priority = priority; }
 
     @Override
     public boolean equals(Object o) {
@@ -39,12 +42,13 @@ public class Task {
         if (o == null || getClass() != o.getClass()) return false;
         Task task = (Task) o;
         return id == task.id && isCompleted == task.isCompleted && createTime == task.createTime
+                && priority == task.priority
                 && Objects.equals(title, task.title) && Objects.equals(description, task.description)
                 && Objects.equals(dueDate, task.dueDate);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, title, description, isCompleted, createTime, dueDate);
+        return Objects.hash(id, title, description, isCompleted, createTime, dueDate, priority);
     }
 }

@@ -33,6 +33,7 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     private FragmentAddTaskBottomSheetBinding binding;
     private TaskViewModel viewModel;
     private Long dueDate = null; // null表示不设置日期
+    private int priority = 0; // 默认无优先级
 
     public static AddTaskBottomSheet newInstance(long defaultDate) {
         AddTaskBottomSheet fragment = new AddTaskBottomSheet();
@@ -120,6 +121,19 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             tvDueDate.setText("不设置日期");
             tvDueDate.setTextColor(getResources().getColor(R.color.dark_gray, null));
             btnClearDate.setVisibility(View.GONE);
+        });
+
+        // 优先级选择
+        binding.chipGroupPriority.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == R.id.chipPriorityNone) {
+                priority = 0;
+            } else if (checkedId == R.id.chipPriorityLow) {
+                priority = 1;
+            } else if (checkedId == R.id.chipPriorityMedium) {
+                priority = 2;
+            } else if (checkedId == R.id.chipPriorityHigh) {
+                priority = 3;
+            }
         });
 
         // 自动聚焦标题输入框
@@ -211,6 +225,7 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
 
         Task task = new Task(title, description.isEmpty() ? null : description);
         task.setDueDate(dueDate);
+        task.setPriority(priority);
         viewModel.insertTask(task);
         dismiss();
     }

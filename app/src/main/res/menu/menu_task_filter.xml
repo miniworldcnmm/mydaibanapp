@@ -9,4 +9,25 @@
     <item
         android:id="@+id/filter_completed"
         android:title="已完成" />
+    <item
+        android:id="@+id/filter_priority"
+        android:title="按优先级">
+        <menu>
+            <item
+                android:id="@+id/filter_priority_all"
+                android:title="全部优先级" />
+            <item
+                android:id="@+id/filter_priority_high"
+                android:title="高优先级" />
+            <item
+                android:id="@+id/filter_priority_medium"
+                android:title="中优先级" />
+            <item
+                android:id="@+id/filter_priority_low"
+                android:title="低优先级" />
+            <item
+                android:id="@+id/filter_priority_none"
+                android:title="无优先级" />
+        </menu>
+    </item>
 </menu>

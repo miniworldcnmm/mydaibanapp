@@ -51,4 +51,16 @@ public class TaskRepository {
     public void toggleTaskCompletion(int taskId, boolean isCompleted) {
         executorService.execute(() -> taskDao.toggleTaskCompletion(taskId, isCompleted));
     }
+
+    public LiveData<List<Task>> searchTasks(String query) {
+        return taskDao.searchTasks(query);
+    }
+
+    public LiveData<List<Task>> searchTasksByDate(String query, long startOfDay, long endOfDay) {
+        return taskDao.searchTasksByDate(query, startOfDay, endOfDay);
+    }
+
+    public LiveData<List<Task>> getTasksByPriority(int priority) {
+        return taskDao.getTasksByPriority(priority);
+    }
 }

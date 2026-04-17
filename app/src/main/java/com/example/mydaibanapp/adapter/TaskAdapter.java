@@ -1,6 +1,7 @@
 package com.example.mydaibanapp.adapter;
 
 import android.graphics.Paint;
+import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,6 +9,8 @@ import android.widget.CheckBox;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
@@ -52,6 +55,22 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
             holder.tvDescription.setPaintFlags(holder.tvDescription.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
         }
 
+        // 优先级圆点显示
+        if (task.getPriority() > 0) {
+            holder.priorityDot.setVisibility(View.VISIBLE);
+            int colorRes;
+            switch (task.getPriority()) {
+                case 3: colorRes = R.color.priority_high; break;
+                case 2: colorRes = R.color.priority_medium; break;
+                case 1: colorRes = R.color.priority_low; break;
+                default: colorRes = R.color.priority_none; break;
+            }
+            holder.priorityDot.setBackgroundResource(R.drawable.priority_dot);
+            DrawableCompat.setTint(holder.priorityDot.getBackground(), ContextCompat.getColor(holder.itemView.getContext(), colorRes));
+        } else {
+            holder.priorityDot.setVisibility(View.GONE);
+        }
+
         holder.itemView.setOnClickListener(v -> listener.onTaskClick(task));
         holder.cbCompleted.setOnCheckedChangeListener((buttonView, isChecked) -> listener.onTaskToggle(task, isChecked));
         holder.btnDelete.setOnClickListener(v -> listener.onTaskDelete(task));
@@ -59,6 +78,7 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
 
     public static class TaskViewHolder extends RecyclerView.ViewHolder {
         CheckBox cbCompleted;
+        View priorityDot;
         TextView tvTitle;
         TextView tvDescription;
         ImageButton btnDelete;
@@ -66,6 +86,7 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
         public TaskViewHolder(@NonNull View itemView) {
             super(itemView);
             cbCompleted = itemView.findViewById(R.id.cbTaskCompleted);
+            priorityDot = itemView.findViewById(R.id.viewPriorityDot);
             tvTitle = itemView.findViewById(R.id.tvTaskTitle);
             tvDescription = itemView.findViewById(R.id.tvTaskDescription);
             btnDelete = itemView.findViewById(R.id.btnDelete);

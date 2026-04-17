@@ -25,6 +25,14 @@ public class TaskViewModel extends AndroidViewModel {
     private final MutableLiveData<long[]> monthRange = new MutableLiveData<>();
     private final LiveData<List<Long>> taskDatesInMonth;
 
+    // 搜索相关
+    private final MutableLiveData<String> searchQuery = new MutableLiveData<>();
+    private final LiveData<List<Task>> searchResults;
+
+    // 筛选状态保存（ViewModel级别，切换tab和旋转屏幕不丢失）
+    private final MutableLiveData<Integer> currentFilter = new MutableLiveData<>(0);
+    private final MutableLiveData<Integer> currentPriorityFilter = new MutableLiveData<>(-1);
+
     public TaskViewModel(@NonNull Application application) {
         super(application);
         repository = new TaskRepository(application);
@@ -39,6 +47,15 @@ public class TaskViewModel extends AndroidViewModel {
         // 月份有待办日期的LiveData
         taskDatesInMonth = Transformations.switchMap(monthRange, range ->
                 repository.getTaskDatesInMonth(range[0], range[1]));
+
+        // 搜索结果LiveData
+        searchResults = Transformations.switchMap(searchQuery, query -> {
+            if (query == null || query.trim().isEmpty()) {
+                return allTasks; // 空查询返回全部任务
+            }
+            return repository.searchTasks(query);
+        });
+
     }
 
     public LiveData<List<Task>> getActiveTasks() { return activeTasks; }
@@ -46,6 +63,7 @@ public class TaskViewModel extends AndroidViewModel {
     public LiveData<List<Task>> getAllTasks() { return allTasks; }
     public LiveData<List<Task>> getTasksByDate() { return tasksByDate; }
     public LiveData<List<Long>> getTaskDatesInMonth() { return taskDatesInMonth; }
+    public LiveData<List<Task>> getSearchResults() { return searchResults; }
 
     /**
      * 设置查询日期，加载该日期的所有待办
@@ -60,6 +78,27 @@ public class TaskViewModel extends AndroidViewModel {
     public void setMonth(long monthStart, long monthEnd) {
         monthRange.setValue(new long[]{monthStart, monthEnd});
     }
+
+    /**
+     * 设置搜索关键词，触发搜索查询
+     */
+    public void setSearchQuery(String query) {
+        searchQuery.setValue(query);
+    }
+
+    /**
+     * 清除搜索，恢复全部任务显示
+     */
+    public void clearSearch() {
+        searchQuery.setValue(null);
+    }
+
+    // 筛选状态存取
+    public int getCurrentFilter() { return currentFilter.getValue() != null ? currentFilter.getValue() : 0; }
+    public void setCurrentFilter(int filter) { currentFilter.setValue(filter); }
+    public int getCurrentPriorityFilter() { return currentPriorityFilter.getValue() != null ? currentPriorityFilter.getValue() : -1; }
+    public void setCurrentPriorityFilter(int filter) { currentPriorityFilter.setValue(filter); }
+    public String getSearchQueryValue() { return searchQuery.getValue(); }
 
     public void insertTask(Task task) { repository.insertTask(task); }
     public void updateTask(Task task) { repository.updateTask(task); }

@@ -23,6 +23,7 @@ import com.example.mydaibanapp.data.Task;
 import com.example.mydaibanapp.databinding.DialogAddTaskBinding;
 import com.example.mydaibanapp.databinding.FragmentTaskListBinding;
 import com.example.mydaibanapp.viewmodel.TaskViewModel;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,6 +33,10 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
     private TaskViewModel viewModel;
     private TaskAdapter adapter;
     private int currentFilter = 0; // 0:全部 1:进行中 2:已完成
+    private boolean isSearchVisible = false;
+    private int currentPriorityFilter = -1; // -1=全部优先级, 0=无, 1=低, 2=中, 3=高
+    private List<Task> cachedAllTasks = new ArrayList<>();
+    private List<Task> cachedSearchResults = new ArrayList<>();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -60,6 +65,33 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
 
         // 使用Activity级别的ViewModel，实现数据共享
         viewModel = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
+
+        // 从ViewModel恢复筛选状态（切换tab回来时不丢失）
+        currentFilter = viewModel.getCurrentFilter();
+        currentPriorityFilter = viewModel.getCurrentPriorityFilter();
+
+        // 恢复搜索状态（屏幕旋转时）
+        if (savedInstanceState != null) {
+            isSearchVisible = savedInstanceState.getBoolean("isSearchVisible", false);
+            if (isSearchVisible) {
+                binding.searchOverlay.setVisibility(View.VISIBLE);
+                String lastQuery = viewModel.getSearchQueryValue();
+                if (lastQuery != null && !lastQuery.isEmpty()) {
+                    binding.etSearch.setText(lastQuery);
+                    binding.btnClearSearch.setVisibility(View.VISIBLE);
+                }
+            }
+        } else {
+            // 首次创建，检查ViewModel中是否有搜索状态
+            String lastSearchQuery = viewModel.getSearchQueryValue();
+            if (lastSearchQuery != null && !lastSearchQuery.isEmpty()) {
+                isSearchVisible = true;
+                binding.searchOverlay.setVisibility(View.VISIBLE);
+                binding.etSearch.setText(lastSearchQuery);
+                binding.btnClearSearch.setVisibility(View.VISIBLE);
+            }
+        }
+
         observeTasks();
 
         binding.fabAddTask.setOnClickListener(v -> {
@@ -68,18 +100,121 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
             }
             new AddTaskBottomSheet().show(getChildFragmentManager(), "AddTaskBottomSheet");
         });
+
+        // 搜索按钮点击 - 切换搜索框显示/隐藏
+        binding.btnSearch.setOnClickListener(v -> toggleSearch());
+
+        // 搜索输入监听
+        binding.etSearch.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                String query = s.toString().trim();
+                binding.btnClearSearch.setVisibility(query.isEmpty() ? View.GONE : View.VISIBLE);
+                if (query.isEmpty()) {
+                    viewModel.clearSearch();
+                } else {
+                    viewModel.setSearchQuery(query);
+                }
+            }
+        });
+
+        // 清除搜索按钮
+        binding.btnClearSearch.setOnClickListener(v -> {
+            binding.etSearch.setText("");
+            viewModel.clearSearch();
+        });
+
+        // 搜索键盘完成按钮
+        binding.etSearch.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+                if (imm != null) imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+                return true;
+            }
+            return false;
+        });
+    }
+
+    private void toggleSearch() {
+        isSearchVisible = !isSearchVisible;
+        if (isSearchVisible) {
+            // 显示搜索框 - 从右上角动画展开
+            binding.searchOverlay.setVisibility(View.VISIBLE);
+            binding.searchOverlay.setAlpha(0f);
+            binding.searchOverlay.setScaleX(0.5f);
+            binding.searchOverlay.setPivotX(binding.searchOverlay.getWidth() - binding.searchOverlay.getPaddingEnd());
+            binding.searchOverlay.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .setDuration(250)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator())
+                    .start();
+            binding.etSearch.requestFocus();
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showSoftInput(binding.etSearch, 0);
+        } else {
+            // 隐藏搜索框 - 动画收缩
+            binding.searchOverlay.animate()
+                    .alpha(0f)
+                    .scaleX(0.5f)
+                    .setDuration(200)
+                    .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                    .withEndAction(() -> {
+                        binding.searchOverlay.setVisibility(View.GONE);
+                        binding.etSearch.setText("");
+                        viewModel.clearSearch();
+                    })
+                    .start();
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.hideSoftInputFromWindow(binding.etSearch.getWindowToken(), 0);
+        }
     }
 
     private void observeTasks() {
         viewModel.getAllTasks().observe(getViewLifecycleOwner(), tasks -> {
-            if (currentFilter == 0) {
-                adapter.submitList(tasks);
-            } else if (currentFilter == 1) {
-                adapter.submitList(filterActiveTasks(tasks));
-            } else {
-                adapter.submitList(filterCompletedTasks(tasks));
+            cachedAllTasks = tasks != null ? tasks : new ArrayList<>();
+            refreshList();
+        });
+        viewModel.getSearchResults().observe(getViewLifecycleOwner(), tasks -> {
+            cachedSearchResults = tasks != null ? tasks : new ArrayList<>();
+            if (isSearchVisible) {
+                refreshList();
             }
         });
+    }
+
+    private void refreshList() {
+        List<Task> source = isSearchVisible ? cachedSearchResults : cachedAllTasks;
+        List<Task> filtered = applyFilters(source);
+        adapter.submitList(filtered);
+        updateEmptyState(filtered);
+    }
+
+    private List<Task> applyFilters(List<Task> tasks) {
+        List<Task> result = tasks;
+        // 按完成状态筛选
+        if (currentFilter == 1) {
+            result = filterActiveTasks(result);
+        } else if (currentFilter == 2) {
+            result = filterCompletedTasks(result);
+        }
+        // 按优先级筛选
+        if (currentPriorityFilter >= 0) {
+            final int pf = currentPriorityFilter;
+            result = result.stream().filter(t -> t.getPriority() == pf).collect(Collectors.toList());
+        }
+        // 按优先级排序（高→低），相同优先级按创建时间排序
+        result = new ArrayList<>(result);
+        result.sort((a, b) -> {
+            int priorityCompare = Integer.compare(b.getPriority(), a.getPriority());
+            if (priorityCompare != 0) return priorityCompare;
+            return Long.compare(b.getCreateTime(), a.getCreateTime());
+        });
+        return result;
     }
 
     private List<Task> filterActiveTasks(List<Task> tasks) {
@@ -88,6 +223,25 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
 
     private List<Task> filterCompletedTasks(List<Task> tasks) {
         return tasks.stream().filter(Task::isCompleted).collect(Collectors.toList());
+    }
+
+    private void updateEmptyState(List<Task> tasks) {
+        if (tasks.isEmpty()) {
+            binding.tvEmptyState.setVisibility(View.VISIBLE);
+            if (isSearchVisible) {
+                binding.tvEmptyState.setText("没有找到匹配的任务");
+            } else if (currentPriorityFilter >= 0) {
+                binding.tvEmptyState.setText("该优先级下没有任务");
+            } else if (currentFilter == 1) {
+                binding.tvEmptyState.setText("没有进行中的任务");
+            } else if (currentFilter == 2) {
+                binding.tvEmptyState.setText("没有已完成的任务");
+            } else {
+                binding.tvEmptyState.setText("还没有待办任务，点击右下角添加");
+            }
+        } else {
+            binding.tvEmptyState.setVisibility(View.GONE);
+        }
     }
 
     private void showEditTaskDialog(Task task) {
@@ -104,6 +258,28 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
         ImageButton btnClearDate = dialogBinding.btnClearDate;
 
         updateDateDisplay(tvDueDate, btnClearDate, editDueDate[0]);
+
+        // 优先级选择
+        com.google.android.material.chip.ChipGroup chipGroupPriority = dialogBinding.chipGroupPriority;
+        int taskPriority = task.getPriority();
+        switch (taskPriority) {
+            case 3: chipGroupPriority.check(R.id.chipPriorityHigh); break;
+            case 2: chipGroupPriority.check(R.id.chipPriorityMedium); break;
+            case 1: chipGroupPriority.check(R.id.chipPriorityLow); break;
+            default: chipGroupPriority.check(R.id.chipPriorityNone); break;
+        }
+        final int[] editPriority = {taskPriority};
+        chipGroupPriority.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == R.id.chipPriorityNone) {
+                editPriority[0] = 0;
+            } else if (checkedId == R.id.chipPriorityLow) {
+                editPriority[0] = 1;
+            } else if (checkedId == R.id.chipPriorityMedium) {
+                editPriority[0] = 2;
+            } else if (checkedId == R.id.chipPriorityHigh) {
+                editPriority[0] = 3;
+            }
+        });
 
         btnPickDate.setOnClickListener(v -> {
             Calendar cal = Calendar.getInstance();
@@ -150,6 +326,7 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
                 updatedTask.setCompleted(task.isCompleted());
                 updatedTask.setCreateTime(task.getCreateTime());
                 updatedTask.setDueDate(editDueDate[0]);
+                updatedTask.setPriority(editPriority[0]);
                 viewModel.updateTask(updatedTask);
                 dialog.dismiss();
             });
@@ -206,18 +383,52 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
         int id = item.getItemId();
         if (id == R.id.filter_all) {
             currentFilter = 0;
-            observeTasks();
+            viewModel.setCurrentFilter(0);
+            refreshList();
             return true;
         } else if (id == R.id.filter_active) {
             currentFilter = 1;
-            observeTasks();
+            viewModel.setCurrentFilter(1);
+            refreshList();
             return true;
         } else if (id == R.id.filter_completed) {
             currentFilter = 2;
-            observeTasks();
+            viewModel.setCurrentFilter(2);
+            refreshList();
+            return true;
+        } else if (id == R.id.filter_priority_all) {
+            currentPriorityFilter = -1;
+            viewModel.setCurrentPriorityFilter(-1);
+            refreshList();
+            return true;
+        } else if (id == R.id.filter_priority_high) {
+            currentPriorityFilter = 3;
+            viewModel.setCurrentPriorityFilter(3);
+            refreshList();
+            return true;
+        } else if (id == R.id.filter_priority_medium) {
+            currentPriorityFilter = 2;
+            viewModel.setCurrentPriorityFilter(2);
+            refreshList();
+            return true;
+        } else if (id == R.id.filter_priority_low) {
+            currentPriorityFilter = 1;
+            viewModel.setCurrentPriorityFilter(1);
+            refreshList();
+            return true;
+        } else if (id == R.id.filter_priority_none) {
+            currentPriorityFilter = 0;
+            viewModel.setCurrentPriorityFilter(0);
+            refreshList();
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean("isSearchVisible", isSearchVisible);
     }
 
     @Override

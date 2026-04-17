@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import com.example.mydaibanapp.R;
 import com.example.mydaibanapp.adapter.TaskAdapter;
 import com.example.mydaibanapp.data.Task;
 import com.example.mydaibanapp.databinding.DialogAddTaskBinding;
@@ -150,6 +151,28 @@ public class DateTaskFragment extends Fragment implements TaskAdapter.OnTaskClic
 
         updateDateDisplay(tvDueDate, btnClearDate, editDueDate[0]);
 
+        // 优先级选择
+        com.google.android.material.chip.ChipGroup chipGroupPriority = dialogBinding.chipGroupPriority;
+        int taskPriority = task.getPriority();
+        switch (taskPriority) {
+            case 3: chipGroupPriority.check(R.id.chipPriorityHigh); break;
+            case 2: chipGroupPriority.check(R.id.chipPriorityMedium); break;
+            case 1: chipGroupPriority.check(R.id.chipPriorityLow); break;
+            default: chipGroupPriority.check(R.id.chipPriorityNone); break;
+        }
+        final int[] editPriority = {taskPriority};
+        chipGroupPriority.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == R.id.chipPriorityNone) {
+                editPriority[0] = 0;
+            } else if (checkedId == R.id.chipPriorityLow) {
+                editPriority[0] = 1;
+            } else if (checkedId == R.id.chipPriorityMedium) {
+                editPriority[0] = 2;
+            } else if (checkedId == R.id.chipPriorityHigh) {
+                editPriority[0] = 3;
+            }
+        });
+
         btnPickDate.setOnClickListener(v -> {
             Calendar cal = Calendar.getInstance();
             if (editDueDate[0] != null) {
@@ -195,6 +218,7 @@ public class DateTaskFragment extends Fragment implements TaskAdapter.OnTaskClic
                 updatedTask.setCompleted(task.isCompleted());
                 updatedTask.setCreateTime(task.getCreateTime());
                 updatedTask.setDueDate(editDueDate[0]);
+                updatedTask.setPriority(editPriority[0]);
                 viewModel.updateTask(updatedTask);
                 dialog.dismiss();
             });
