@@ -28,6 +28,14 @@ public class TaskRepository {
     public LiveData<List<Task>> getCompletedTasks() { return completedTasks; }
     public LiveData<List<Task>> getAllTasks() { return allTasks; }
 
+    public LiveData<List<Task>> getTasksByDate(long startOfDay, long endOfDay) {
+        return taskDao.getTasksByDate(startOfDay, endOfDay);
+    }
+
+    public LiveData<List<Long>> getTaskDatesInMonth(long monthStart, long monthEnd) {
+        return taskDao.getTaskDatesInMonth(monthStart, monthEnd);
+    }
+
     public void insertTask(Task task) {
         executorService.execute(() -> taskDao.insertTask(task));
     }
