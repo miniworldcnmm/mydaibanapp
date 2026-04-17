@@ -14,20 +14,22 @@
 ```
 com.example.mydaibanapp
 ├── data/          # 数据层
-│   ├── Task.java       # 任务实体类
-│   ├── TaskDao.java    # 数据库操作接口
-│   └── AppDatabase.java # Room数据库配置
+│   ├── Task.java       # 任务实体类（含dueDate字段）
+│   ├── TaskDao.java    # 数据库操作接口（含日期范围查询）
+│   └── AppDatabase.java # Room数据库配置（v2迁移）
 ├── repository/    # 数据仓库层，统一管理数据源
 │   └── TaskRepository.java
 ├── viewmodel/     # ViewModel层，处理业务逻辑，持有UI数据
 │   └── TaskViewModel.java
 ├── fragment/      # Fragment层
 │   ├── TaskListFragment.java  # 任务列表页面
+│   ├── CalendarFragment.java  # 日历页面
+│   ├── DateTaskFragment.java  # 日期待办页面
 │   ├── SettingsFragment.java  # 设置页面
 │   └── AddTaskBottomSheet.java # 底部滑出添加任务面板
 ├── adapter/       # 列表适配器
 │   └── TaskAdapter.java
-└── MainActivity.java # 主界面（Fragment容器）
+└── MainActivity.java # 主界面（Fragment容器，三tab导航）
 ```
 
 ## 功能列表
@@ -38,6 +40,9 @@ com.example.mydaibanapp
 ✅ 筛选查看任务：全部/进行中/已完成，右上角菜单切换
 ✅ 数据本地持久化，重启APP不会丢失任何任务
 ✅ 手绘风格界面设计：浅黄背景、无蓝色横条的透明Toolbar、虚线边框列表项、蓝色主色调标题文字，美观清爽
+✅ 日历功能：底部导航三tab（待办|日历|设置），全屏月视图日历，月份左右切换，今天高亮椭圆，有待办日期蓝点
+✅ 日期待办页面：点击日历日期滑动进入，顶部左右切换日期，显示当日待办列表，空状态提示，FAB添加（自动预设日期）
+✅ 任务日期：添加/编辑任务时可选择日期（DatePicker），可清除，日历蓝点仅显示有dueDate的任务
 
 ## 项目配置
 - 最低SDK版本：29（Android 10）
@@ -66,6 +71,10 @@ com.example.mydaibanapp
 18. TextInputLayout浮动标签：如需纯placeholder效果（聚焦后hint消失而非浮动变蓝），设app:hintEnabled="false"并将hint放在EditText上
 19. inputType与imeOptions配合：textCapSentences是多行类型，部分键盘会忽略imeOptions="actionDone"，需改为text|textCapSentences确保键盘显示完成按钮
 20. ImageView使用app:tint：lint要求ImageView/ImageButton必须用app:tint替代android:tint（UseAppTint规则）
+21. 日历无限循环：CalendarFragment的observer不能调用setMonth()，否则会触发switchMap重新查询导致无限循环。observer只应调用renderGrid()，setMonth只在初始化和月份切换按钮时调用
+22. 编辑任务保留createTime：创建新Task对象时必须setCreateTime(task.getCreateTime())，否则createTime被重置为当前时间导致排序错乱
+23. Fragment切换与back stack：DateTaskFragment用replace+addToBackStack跳转，切换底部tab时需先popBackStackImmediate()，否则覆盖Fragment残留显示
+24. GridLayout首次渲染高度为0：不能用post()或OnGlobalLayoutListener等异步方式获取高度，需要从屏幕尺寸直接计算格子高度
 
 ## 开发规范
 - 遵循MVVM架构分层，各层职责明确，低耦合高内聚
