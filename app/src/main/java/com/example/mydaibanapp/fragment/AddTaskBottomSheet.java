@@ -1,6 +1,7 @@
 package com.example.mydaibanapp.fragment;
 
 import android.app.Dialog;
+import android.app.DatePickerDialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.text.Editable;
@@ -12,19 +13,47 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.ImageButton;
+import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.ViewModelProvider;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import com.example.mydaibanapp.R;
 import com.example.mydaibanapp.data.Task;
 import com.example.mydaibanapp.databinding.FragmentAddTaskBottomSheetBinding;
 import com.example.mydaibanapp.viewmodel.TaskViewModel;
+import java.util.Calendar;
 
 public class AddTaskBottomSheet extends BottomSheetDialogFragment {
 
+    private static final String ARG_DEFAULT_DATE = "default_date";
+
     private FragmentAddTaskBottomSheetBinding binding;
     private TaskViewModel viewModel;
+    private Long dueDate = null; // null表示不设置日期
+
+    public static AddTaskBottomSheet newInstance(long defaultDate) {
+        AddTaskBottomSheet fragment = new AddTaskBottomSheet();
+        Bundle args = new Bundle();
+        args.putLong(ARG_DEFAULT_DATE, defaultDate);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    // 无参构造，用于待办列表页添加（不预设日期）
+    public AddTaskBottomSheet() {
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        // 如果从日历页传入默认日期，则预设
+        if (getArguments() != null && getArguments().containsKey(ARG_DEFAULT_DATE)) {
+            dueDate = getArguments().getLong(ARG_DEFAULT_DATE);
+        }
+    }
 
     @Nullable
     @Override
@@ -74,8 +103,65 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             }
         });
 
+        // 日期选择（使用binding获取视图）
+        ImageButton btnPickDate = binding.btnPickDate;
+        TextView tvDueDate = binding.tvDueDate;
+        ImageButton btnClearDate = binding.btnClearDate;
+
+        // 如果有预设日期，显示
+        if (dueDate != null) {
+            updateDateDisplay(tvDueDate, btnClearDate);
+        }
+
+        btnPickDate.setOnClickListener(v -> showDatePicker(tvDueDate, btnClearDate));
+
+        btnClearDate.setOnClickListener(v -> {
+            dueDate = null;
+            tvDueDate.setText("不设置日期");
+            tvDueDate.setTextColor(getResources().getColor(R.color.dark_gray, null));
+            btnClearDate.setVisibility(View.GONE);
+        });
+
         // 自动聚焦标题输入框
         binding.etTitle.requestFocus();
+    }
+
+    private void showDatePicker(TextView tvDueDate, ImageButton btnClearDate) {
+        Calendar cal = Calendar.getInstance();
+        if (dueDate != null) {
+            cal.setTimeInMillis(dueDate);
+        }
+        int year = cal.get(Calendar.YEAR);
+        int month = cal.get(Calendar.MONTH);
+        int day = cal.get(Calendar.DAY_OF_MONTH);
+
+        DatePickerDialog datePickerDialog = new DatePickerDialog(requireContext(),
+                (view, selectedYear, selectedMonth, selectedDay) -> {
+                    Calendar selected = Calendar.getInstance();
+                    selected.set(selectedYear, selectedMonth, selectedDay, 0, 0, 0);
+                    selected.set(Calendar.MILLISECOND, 0);
+                    dueDate = selected.getTimeInMillis();
+                    updateDateDisplay(tvDueDate, btnClearDate);
+                }, year, month, day);
+        datePickerDialog.show();
+    }
+
+    private void updateDateDisplay(TextView tvDueDate, ImageButton btnClearDate) {
+        if (dueDate == null) {
+            tvDueDate.setText("不设置日期");
+            tvDueDate.setTextColor(getResources().getColor(R.color.dark_gray, null));
+            btnClearDate.setVisibility(View.GONE);
+            return;
+        }
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(dueDate);
+        int month = cal.get(Calendar.MONTH) + 1;
+        int day = cal.get(Calendar.DAY_OF_MONTH);
+        String[] weekDays = {"日", "一", "二", "三", "四", "五", "六"};
+        String weekDay = weekDays[cal.get(Calendar.DAY_OF_WEEK) - 1];
+        tvDueDate.setText(month + "月" + day + "日 星期" + weekDay);
+        tvDueDate.setTextColor(getResources().getColor(R.color.hand_drawn_blue, null));
+        btnClearDate.setVisibility(View.VISIBLE);
     }
 
     @Override
@@ -124,6 +210,7 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         }
 
         Task task = new Task(title, description.isEmpty() ? null : description);
+        task.setDueDate(dueDate);
         viewModel.insertTask(task);
         dismiss();
     }

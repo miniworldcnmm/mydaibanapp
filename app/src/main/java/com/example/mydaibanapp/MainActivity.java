@@ -7,12 +7,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
 import com.example.mydaibanapp.databinding.ActivityTaskBinding;
+import com.example.mydaibanapp.fragment.CalendarFragment;
 import com.example.mydaibanapp.fragment.SettingsFragment;
 import com.example.mydaibanapp.fragment.TaskListFragment;
 
 public class MainActivity extends AppCompatActivity {
     private ActivityTaskBinding binding;
     private TaskListFragment taskListFragment;
+    private CalendarFragment calendarFragment;
     private SettingsFragment settingsFragment;
     private Fragment activeFragment;
 
@@ -28,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
         // 初始化Fragment
         if (savedInstanceState == null) {
             taskListFragment = new TaskListFragment();
+            calendarFragment = new CalendarFragment();
             settingsFragment = new SettingsFragment();
             activeFragment = taskListFragment;
 
@@ -35,11 +38,14 @@ public class MainActivity extends AppCompatActivity {
             getSupportFragmentManager().beginTransaction()
                     .add(R.id.fragment_container, settingsFragment, "settings")
                     .hide(settingsFragment)
+                    .add(R.id.fragment_container, calendarFragment, "calendar")
+                    .hide(calendarFragment)
                     .add(R.id.fragment_container, taskListFragment, "tasks")
                     .commit();
         } else {
             // 恢复Fragment引用
             taskListFragment = (TaskListFragment) getSupportFragmentManager().findFragmentByTag("tasks");
+            calendarFragment = (CalendarFragment) getSupportFragmentManager().findFragmentByTag("calendar");
             settingsFragment = (SettingsFragment) getSupportFragmentManager().findFragmentByTag("settings");
             activeFragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         }
@@ -49,6 +55,9 @@ public class MainActivity extends AppCompatActivity {
             int id = item.getItemId();
             if (id == R.id.nav_tasks) {
                 switchFragment(taskListFragment);
+                return true;
+            } else if (id == R.id.nav_calendar) {
+                switchFragment(calendarFragment);
                 return true;
             } else if (id == R.id.nav_settings) {
                 switchFragment(settingsFragment);
@@ -88,9 +97,15 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * 切换Fragment
+     * 先弹出back stack中覆盖的Fragment（如DateTaskFragment），防止残留显示
      */
     private void switchFragment(Fragment targetFragment) {
         if (activeFragment != targetFragment) {
+            // 弹出overlay Fragment（如DateTaskFragment），避免切换tab时残留显示
+            if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+                getSupportFragmentManager().popBackStackImmediate();
+            }
+
             getSupportFragmentManager().beginTransaction()
                     .hide(activeFragment)
                     .show(targetFragment)
