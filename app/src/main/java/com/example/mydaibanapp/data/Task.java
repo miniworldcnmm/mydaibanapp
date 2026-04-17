@@ -12,6 +12,7 @@ public class Task {
     private String description;
     private boolean isCompleted;
     private long createTime = System.currentTimeMillis();
+    private Long dueDate; // 待办日期的时间戳，null表示未设置
 
     public Task(String title, String description) {
         this.title = title;
@@ -29,6 +30,8 @@ public class Task {
     public void setCompleted(boolean completed) { isCompleted = completed; }
     public long getCreateTime() { return createTime; }
     public void setCreateTime(long createTime) { this.createTime = createTime; }
+    public Long getDueDate() { return dueDate; }
+    public void setDueDate(Long dueDate) { this.dueDate = dueDate; }
 
     @Override
     public boolean equals(Object o) {
@@ -36,11 +39,12 @@ public class Task {
         if (o == null || getClass() != o.getClass()) return false;
         Task task = (Task) o;
         return id == task.id && isCompleted == task.isCompleted && createTime == task.createTime
-                && Objects.equals(title, task.title) && Objects.equals(description, task.description);
+                && Objects.equals(title, task.title) && Objects.equals(description, task.description)
+                && Objects.equals(dueDate, task.dueDate);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, title, description, isCompleted, createTime);
+        return Objects.hash(id, title, description, isCompleted, createTime, dueDate);
     }
 }
