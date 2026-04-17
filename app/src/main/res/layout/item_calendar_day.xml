@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 日历网格中的单个日期格子 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layoutDayCell"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:paddingTop="6dp"
+    android:paddingBottom="4dp">
+
+    <TextView
+        android:id="@+id/tvDayNumber"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="16sp"
+        android:textColor="?attr/colorOnSurface"
+        android:gravity="center" />
+
+    <View
+        android:id="@+id/viewDot"
+        android:layout_width="6dp"
+        android:layout_height="6dp"
+        android:layout_marginTop="2dp"
+        android:background="@drawable/dot_indicator"
+        android:visibility="gone" />
+</LinearLayout>
