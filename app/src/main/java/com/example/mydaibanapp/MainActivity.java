@@ -6,17 +6,21 @@ import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 import com.example.mydaibanapp.databinding.ActivityTaskBinding;
 import com.example.mydaibanapp.fragment.CalendarFragment;
 import com.example.mydaibanapp.fragment.SettingsFragment;
 import com.example.mydaibanapp.fragment.TaskListFragment;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String KEY_SELECTED_TAB = "selected_tab";
+
     private ActivityTaskBinding binding;
     private TaskListFragment taskListFragment;
     private CalendarFragment calendarFragment;
     private SettingsFragment settingsFragment;
     private Fragment activeFragment;
+    private int currentTabId = R.id.nav_tasks;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
             calendarFragment = new CalendarFragment();
             settingsFragment = new SettingsFragment();
             activeFragment = taskListFragment;
+            currentTabId = R.id.nav_tasks;
 
             // 添加所有Fragment，默认显示任务列表
             getSupportFragmentManager().beginTransaction()
@@ -47,24 +52,32 @@ public class MainActivity extends AppCompatActivity {
             taskListFragment = (TaskListFragment) getSupportFragmentManager().findFragmentByTag("tasks");
             calendarFragment = (CalendarFragment) getSupportFragmentManager().findFragmentByTag("calendar");
             settingsFragment = (SettingsFragment) getSupportFragmentManager().findFragmentByTag("settings");
-            activeFragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+
+            currentTabId = savedInstanceState.getInt(KEY_SELECTED_TAB, resolveVisibleTabId());
+            activeFragment = getRootFragmentByTabId(currentTabId);
+
+            if (activeFragment == null) {
+                currentTabId = resolveVisibleTabId();
+                activeFragment = getRootFragmentByTabId(currentTabId);
+            }
         }
 
-        // 底部导航切换
+        binding.bottomNavigation.setSelectedItemId(currentTabId);
         binding.bottomNavigation.setOnItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == R.id.nav_tasks) {
-                switchFragment(taskListFragment);
-                return true;
-            } else if (id == R.id.nav_calendar) {
-                switchFragment(calendarFragment);
-                return true;
-            } else if (id == R.id.nav_settings) {
-                switchFragment(settingsFragment);
-                return true;
-            }
-            return false;
+            switchFragment(item.getItemId());
+            return true;
         });
+
+        // 主题切换重建后，强制同步一次根Fragment可见状态，避免旧页面残留在上层
+        if (savedInstanceState != null) {
+            syncRootFragmentState();
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(KEY_SELECTED_TAB, currentTabId);
     }
 
     /**
@@ -96,21 +109,57 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * 切换Fragment
-     * 先弹出back stack中覆盖的Fragment（如DateTaskFragment），防止残留显示
+     * 切换根Fragment
+     * 先弹出back stack中覆盖的Fragment（如DateTaskFragment），再统一隐藏所有root fragment，避免残留显示
      */
-    private void switchFragment(Fragment targetFragment) {
-        if (activeFragment != targetFragment) {
-            // 弹出overlay Fragment（如DateTaskFragment），避免切换tab时残留显示
-            if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
-                getSupportFragmentManager().popBackStackImmediate();
-            }
+    private void switchFragment(int tabId) {
+        currentTabId = tabId;
+        syncRootFragmentState();
+    }
 
-            getSupportFragmentManager().beginTransaction()
-                    .hide(activeFragment)
-                    .show(targetFragment)
-                    .commit();
-            activeFragment = targetFragment;
+    private void syncRootFragmentState() {
+        Fragment targetFragment = getRootFragmentByTabId(currentTabId);
+        if (targetFragment == null || !targetFragment.isAdded()) {
+            return;
         }
+
+        // 弹出overlay Fragment（如DateTaskFragment），避免切换tab时残留显示
+        if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+            getSupportFragmentManager().popBackStackImmediate();
+        }
+
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+        hideRootFragment(transaction, taskListFragment);
+        hideRootFragment(transaction, calendarFragment);
+        hideRootFragment(transaction, settingsFragment);
+        transaction.show(targetFragment).commit();
+
+        activeFragment = targetFragment;
+    }
+
+    private void hideRootFragment(FragmentTransaction transaction, Fragment fragment) {
+        if (fragment != null && fragment.isAdded()) {
+            transaction.hide(fragment);
+        }
+    }
+
+    private Fragment getRootFragmentByTabId(int tabId) {
+        if (tabId == R.id.nav_calendar) {
+            return calendarFragment;
+        }
+        if (tabId == R.id.nav_settings) {
+            return settingsFragment;
+        }
+        return taskListFragment;
+    }
+
+    private int resolveVisibleTabId() {
+        if (settingsFragment != null && settingsFragment.isAdded() && !settingsFragment.isHidden()) {
+            return R.id.nav_settings;
+        }
+        if (calendarFragment != null && calendarFragment.isAdded() && !calendarFragment.isHidden()) {
+            return R.id.nav_calendar;
+        }
+        return R.id.nav_tasks;
     }
 }
