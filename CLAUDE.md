@@ -86,6 +86,7 @@ com.example.mydaibanapp
 29. 筛选状态保存：currentFilter和currentPriorityFilter存ViewModel（切tab不丢），isSearchVisible存onSaveInstanceState（旋转不丢），恢复时在onViewCreated()从ViewModel+savedInstanceState重建UI
 30. Room的@Query参数化防SQL注入：Room用prepared statement，:query参数不会被注入，但LIKE通配符（%和_）在用户输入中不会被转义，本地APP影响不大
 31. ChipGroup selectionRequired=false风险：用户可能取消所有chip选中导致priority值停留在上一次设置，需注意或改用selectionRequired=true
+32. 深色模式切换后Fragment重叠：`AppCompatDelegate.setDefaultNightMode()`会触发Activity重建，MainActivity不能用`findFragmentById(R.id.fragment_container)`推断当前root Fragment；应保存当前底部导航tab（如`currentTabId`），重建后按tab恢复，并统一`hide`所有root fragment后只`show`目标页，避免SettingsFragment残留覆盖待办/日历页
 
 ## 开发规范
 - 遵循MVVM架构分层，各层职责明确，低耦合高内聚
@@ -97,3 +98,4 @@ com.example.mydaibanapp
 - 注意API兼容性：minSDK 29，避免使用高版本API（如Stream#toList()需API 34），可用`JAVA_HOME="D:/android/jbr" ./gradlew lint`检查
 - Room实体类必须实现equals()和hashCode()，否则DiffUtil无法正确比较内容变化
 - **每次改完代码必须运行 `JAVA_HOME="D:/android/jbr" ./gradlew lint` 和 `JAVA_HOME="D:/android/jbr" ./gradlew assembleDebug` 检查错误，确认无错误后再提交git**
+- MainActivity若采用多root Fragment的`add + hide/show`结构，配置变更恢复时要显式保存/恢复当前tab，不要依赖`findFragmentById()`判断当前显示页；切tab时优先清理back stack中的覆盖页，再统一同步root Fragment显隐状态
