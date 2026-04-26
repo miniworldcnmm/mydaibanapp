@@ -12,10 +12,13 @@ import androidx.annotation.Nullable;
 
 public class SwipeRevealLayout extends FrameLayout {
     private static final long ANIMATION_DURATION_MS = 160L;
+    private static final float EXTRA_DRAG_DP = 88f;
+    private static final float EXTRA_DRAG_RESISTANCE = 0.35f;
 
     private View foregroundView;
     private View revealView;
     private int touchSlop;
+    private float maxExtraDrag;
     private float downX;
     private float downY;
     private float startTranslationX;
@@ -47,6 +50,7 @@ public class SwipeRevealLayout extends FrameLayout {
 
     private void init(Context context) {
         touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+        maxExtraDrag = EXTRA_DRAG_DP * context.getResources().getDisplayMetrics().density;
         setClipChildren(false);
     }
 
@@ -110,7 +114,7 @@ public class SwipeRevealLayout extends FrameLayout {
                     getParent().requestDisallowInterceptTouchEvent(true);
                 }
                 if (dragging) {
-                    float nextTranslation = clamp(startTranslationX + dx, -getRevealWidth(), 0);
+                    float nextTranslation = applyDragResistance(startTranslationX + dx);
                     foregroundView.setTranslationX(nextTranslation);
                     return true;
                 }
@@ -197,7 +201,15 @@ public class SwipeRevealLayout extends FrameLayout {
         return revealView != null ? revealView.getWidth() : 0;
     }
 
-    private float clamp(float value, float min, float max) {
-        return Math.max(min, Math.min(max, value));
+    private float applyDragResistance(float value) {
+        int revealWidth = getRevealWidth();
+        if (value >= 0) {
+            return 0;
+        }
+        if (value >= -revealWidth) {
+            return value;
+        }
+        float extra = Math.min((-value - revealWidth) * EXTRA_DRAG_RESISTANCE, maxExtraDrag);
+        return -revealWidth - extra;
     }
 }

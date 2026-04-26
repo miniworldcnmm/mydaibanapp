@@ -32,18 +32,23 @@ com.example.mydaibanapp
 │   ├── SettingsFragment.java  # 设置页面
 │   └── AddTaskBottomSheet.java # 底部滑出添加任务面板（含优先级和提醒时间选择）
 ├── adapter/       # 列表适配器
-│   └── TaskAdapter.java
+│   ├── TaskAdapter.java # 任务项适配器（支持左滑删除）
+│   └── TaskGroupHeaderAdapter.java # 首页未完成/已完成分组标题
+├── view/          # 自定义View
+│   ├── SwipeRevealLayout.java # 左滑露出删除按钮容器
+│   └── TaskGroupBoxDecoration.java # 首页分组框背景绘制
 └── MainActivity.java # 主界面（Fragment容器，三tab导航）
 ```
 
 ## 功能列表
 ✅ 添加新任务（底部滑出面板BottomSheet，自动弹出键盘，标题为空时发送按钮禁用）
 ✅ 编辑现有任务
-✅ 删除任务（带确认对话框，防止误删）
+✅ 删除任务（任务项左滑露出删除按钮，点击后直接删除）
 ✅ 标记任务为完成/未完成（完成后显示删除线效果）
 ✅ 筛选查看任务：全部/进行中/已完成，右上角菜单切换
 ✅ 数据本地持久化，重启APP不会丢失任何任务
-✅ 手绘风格界面设计：浅黄背景、无蓝色横条的透明Toolbar、虚线边框列表项、蓝色主色调标题文字，美观清爽
+✅ 手绘风格界面设计：浅黄背景、无蓝色横条的透明Toolbar、紧凑任务列表项、蓝色主色调标题文字，美观清爽
+✅ 首页分组显示：未完成和已完成任务分组展示，分组框视觉上包住标题和对应任务项
 ✅ 日历功能：底部导航三tab（待办|日历|设置），全屏月视图日历，月份左右切换，今天高亮椭圆，有待办日期蓝点
 ✅ 日期待办页面：点击日历日期滑动进入，顶部左右切换日期，显示当日待办列表，空状态提示，FAB添加（自动预设日期）
 ✅ 任务日期：添加/编辑任务时可选择日期（DatePicker），可清除，日历蓝点仅显示有dueDate的任务
@@ -52,6 +57,7 @@ com.example.mydaibanapp
 ✅ 任务提醒通知：添加/编辑任务可选择具体提醒时间，到点通过系统通知提醒；完成、删除或改期后自动取消/重排提醒
 ✅ 筛选状态保存：切换底部tab或旋转屏幕不丢失筛选和搜索状态（ViewModel保存+onSaveInstanceState）
 ✅ 空状态提示：搜索无结果/筛选无匹配时显示上下文提示文字
+✅ 搜索返回键处理：搜索框显示时按系统返回键先退出搜索并恢复列表，不直接退出App
 
 ## 项目配置
 - 最低SDK版本：29（Android 10）
@@ -94,6 +100,11 @@ com.example.mydaibanapp
 32. 深色模式切换后Fragment重叠：`AppCompatDelegate.setDefaultNightMode()`会触发Activity重建，MainActivity不能用`findFragmentById(R.id.fragment_container)`推断当前root Fragment；应保存当前底部导航tab（如`currentTabId`），重建后按tab恢复，并统一`hide`所有root fragment后只`show`目标页，避免SettingsFragment残留覆盖待办/日历页
 33. 任务提醒通知MVP：新增`reminderAt`字段和Room v4迁移；用`AlarmManager.setAndAllowWhileIdle()`注册提醒，`TaskReminderReceiver`到点二次查询数据库，确认任务未完成、未删除且提醒时间匹配后再发通知；`BootReceiver`必须用`goAsync()`重排，避免开机广播返回后后台线程被系统中断
 34. 提醒测试结论：用户已完成基本手动测试，提醒能正常弹出；但不申请`SCHEDULE_EXACT_ALARM`，省电/Doze/厂商后台策略下即使App在前台也可能出现较大延迟，这是当前MVP的系统调度取舍，不应误判为时区问题
+35. 首页任务分组实现：未完成/已完成分组不要用NestedScrollView嵌套多个RecyclerView，任务多会失去复用优势；应使用单RecyclerView + ConcatAdapter拼接分组标题和任务列表
+36. 分组框视觉偏好：用户希望未完成和已完成的“框”直接包住标题和对应待办事项，不是只给标题或每条任务单独画框；当前用TaskGroupBoxDecoration统一绘制分组背景和边框
+37. 滑动删除交互：首页和日期待办页都使用左滑露出右侧红色删除按钮；删除点击后直接调用viewModel.deleteTask(task)，不弹确认框，并继续走Repository取消提醒逻辑
+38. 搜索返回键：搜索框显示时，系统返回键必须先关闭搜索、清空搜索并隐藏键盘，不能直接退出App；使用OnBackPressedCallback跟随isSearchVisible启停
+39. 滑动删除橡皮筋效果：用户希望左滑超过删除按钮完全露出后还能继续拖出明显距离，松手回弹到删除按钮完整露出位置；仅提高过拖阻尼可能视觉不明显，后续应让红色背景承接更宽拖动区域并强化回弹动画
 
 ## 开发规范
 - `已解决的问题记录` 是历史修复与避坑清单，不是待办列表；不能把其中条目当作下一步待开发内容。
@@ -107,5 +118,8 @@ com.example.mydaibanapp
 - Room实体类必须实现equals()和hashCode()，否则DiffUtil无法正确比较内容变化
 - 提醒功能如新增字段，所有编辑路径都必须保留字段（TaskListFragment和DateTaskFragment都要同步），否则会复现createTime/priority同类丢字段问题
 - 普通待办提醒默认不申请精确闹钟权限；若未来要承诺准点提醒，再评估`SCHEDULE_EXACT_ALARM`权限、上架风险和用户授权流程
+- 待办列表UI优先保持紧凑，首页分组应使用单RecyclerView结构，避免嵌套滚动列表导致性能和复用问题
+- 搜索框处于打开状态时，系统返回键优先退出搜索状态
+- 用户测试通过并允许提交时，再一次性更新CLAUDE.md并提交git；用户明确要求暂不更新文档时不要提前改CLAUDE.md
 - **每次改完代码必须运行 `JAVA_HOME="D:/android/jbr" ./gradlew lint` 和 `JAVA_HOME="D:/android/jbr" ./gradlew assembleDebug` 检查错误，确认无错误后再提交git**
 - MainActivity若采用多root Fragment的`add + hide/show`结构，配置变更恢复时要显式保存/恢复当前tab，不要依赖`findFragmentById()`判断当前显示页；切tab时优先清理back stack中的覆盖页，再统一同步root Fragment显隐状态

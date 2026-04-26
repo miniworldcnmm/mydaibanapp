@@ -14,6 +14,7 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.example.mydaibanapp.MainActivity;
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -27,6 +28,7 @@ import com.example.mydaibanapp.adapter.TaskGroupHeaderAdapter;
 import com.example.mydaibanapp.data.Task;
 import com.example.mydaibanapp.databinding.DialogAddTaskBinding;
 import com.example.mydaibanapp.databinding.FragmentTaskListBinding;
+import com.example.mydaibanapp.view.TaskGroupBoxDecoration;
 import com.example.mydaibanapp.viewmodel.TaskViewModel;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -41,6 +43,8 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
     private TaskAdapter completedAdapter;
     private TaskGroupHeaderAdapter activeHeaderAdapter;
     private TaskGroupHeaderAdapter completedHeaderAdapter;
+    private TaskGroupBoxDecoration groupBoxDecoration;
+    private OnBackPressedCallback searchBackCallback;
     private int currentFilter = 0; // 0:全部 1:进行中 2:已完成
     private boolean isSearchVisible = false;
     private int currentPriorityFilter = -1; // -1=全部优先级, 0=无, 1=低, 2=中, 3=高
@@ -80,6 +84,9 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
                 completedAdapter);
         binding.rvTasks.setAdapter(concatAdapter);
         binding.rvTasks.setLayoutManager(new LinearLayoutManager(requireContext()));
+        groupBoxDecoration = new TaskGroupBoxDecoration(requireContext());
+        binding.rvTasks.addItemDecoration(groupBoxDecoration);
+        setupSearchBackHandling();
 
         // 使用Activity级别的ViewModel，实现数据共享
         viewModel = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
@@ -109,6 +116,7 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
                 binding.btnClearSearch.setVisibility(View.VISIBLE);
             }
         }
+        updateSearchBackCallback();
 
         observeTasks();
 
@@ -158,37 +166,62 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
     }
 
     private void toggleSearch() {
-        isSearchVisible = !isSearchVisible;
         if (isSearchVisible) {
-            // 显示搜索框 - 从右上角动画展开
-            binding.searchOverlay.setVisibility(View.VISIBLE);
-            binding.searchOverlay.setAlpha(0f);
-            binding.searchOverlay.setScaleX(0.5f);
-            binding.searchOverlay.setPivotX(binding.searchOverlay.getWidth() - binding.searchOverlay.getPaddingEnd());
-            binding.searchOverlay.animate()
-                    .alpha(1f)
-                    .scaleX(1f)
-                    .setDuration(250)
-                    .setInterpolator(new android.view.animation.OvershootInterpolator())
-                    .start();
-            binding.etSearch.requestFocus();
-            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
-            if (imm != null) imm.showSoftInput(binding.etSearch, 0);
+            hideSearch();
         } else {
-            // 隐藏搜索框 - 动画收缩
-            binding.searchOverlay.animate()
-                    .alpha(0f)
-                    .scaleX(0.5f)
-                    .setDuration(200)
-                    .setInterpolator(new android.view.animation.AccelerateInterpolator())
-                    .withEndAction(() -> {
-                        binding.searchOverlay.setVisibility(View.GONE);
-                        binding.etSearch.setText("");
-                        viewModel.clearSearch();
-                    })
-                    .start();
-            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
-            if (imm != null) imm.hideSoftInputFromWindow(binding.etSearch.getWindowToken(), 0);
+            showSearch();
+        }
+    }
+
+    private void showSearch() {
+        isSearchVisible = true;
+        updateSearchBackCallback();
+        binding.searchOverlay.setVisibility(View.VISIBLE);
+        binding.searchOverlay.setAlpha(0f);
+        binding.searchOverlay.setScaleX(0.5f);
+        binding.searchOverlay.setPivotX(binding.searchOverlay.getWidth() - binding.searchOverlay.getPaddingEnd());
+        binding.searchOverlay.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .setDuration(250)
+                .setInterpolator(new android.view.animation.OvershootInterpolator())
+                .start();
+        binding.etSearch.requestFocus();
+        android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.showSoftInput(binding.etSearch, 0);
+    }
+
+    private void hideSearch() {
+        isSearchVisible = false;
+        updateSearchBackCallback();
+        binding.searchOverlay.animate()
+                .alpha(0f)
+                .scaleX(0.5f)
+                .setDuration(200)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                .withEndAction(() -> {
+                    binding.searchOverlay.setVisibility(View.GONE);
+                    binding.etSearch.setText("");
+                    viewModel.clearSearch();
+                })
+                .start();
+        android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(binding.etSearch.getWindowToken(), 0);
+    }
+
+    private void setupSearchBackHandling() {
+        searchBackCallback = new OnBackPressedCallback(isSearchVisible) {
+            @Override
+            public void handleOnBackPressed() {
+                hideSearch();
+            }
+        };
+        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), searchBackCallback);
+    }
+
+    private void updateSearchBackCallback() {
+        if (searchBackCallback != null) {
+            searchBackCallback.setEnabled(isSearchVisible);
         }
     }
 
@@ -247,6 +280,8 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
 
         activeHeaderAdapter.submitCount(activeTasks.size());
         completedHeaderAdapter.submitCount(completedTasks.size());
+        groupBoxDecoration.setGroupCounts(activeTasks.size(), completedTasks.size());
+        binding.rvTasks.invalidateItemDecorations();
         binding.rvTasks.setVisibility(hasAnyTasks ? View.VISIBLE : View.GONE);
 
         if (!hasAnyTasks) {
