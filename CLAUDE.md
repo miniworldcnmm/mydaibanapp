@@ -103,8 +103,9 @@ com.example.mydaibanapp
 35. 首页任务分组实现：未完成/已完成分组不要用NestedScrollView嵌套多个RecyclerView，任务多会失去复用优势；应使用单RecyclerView + ConcatAdapter拼接分组标题和任务列表
 36. 分组框视觉偏好：用户希望未完成和已完成的“框”直接包住标题和对应待办事项，不是只给标题或每条任务单独画框；当前用TaskGroupBoxDecoration统一绘制分组背景和边框
 37. 滑动删除交互：首页和日期待办页都使用左滑露出右侧红色删除按钮；删除点击后直接调用viewModel.deleteTask(task)，不弹确认框，并继续走Repository取消提醒逻辑
-38. 搜索返回键：搜索框显示时，系统返回键必须先关闭搜索、清空搜索并隐藏键盘，不能直接退出App；使用OnBackPressedCallback跟随isSearchVisible启停
-39. 滑动删除橡皮筋效果：用户希望左滑超过删除按钮完全露出后还能继续拖出明显距离，松手回弹到删除按钮完整露出位置；仅提高过拖阻尼可能视觉不明显，后续应让红色背景承接更宽拖动区域并强化回弹动画
+38. 搜索返回键：搜索框显示时，系统返回键必须先关闭搜索、清空搜索、恢复全量列表并隐藏键盘，不能直接退出App；OnBackPressedCallback必须同时受isSearchVisible、Fragment可见/生命周期状态控制，避免隐藏Fragment拦截返回键
+39. 滑动删除橡皮筋效果：左滑超过删除按钮完全露出后还能继续拖出明显距离，松手回弹到删除按钮完整露出位置；红色背景用整行后层承接过拖区域，过拖回弹不能用会越过目标的OvershootInterpolator
+40. 任务项日期/提醒右侧信息：右侧日期/提醒必须限制宽度避免挤压标题；仅提醒任务应保留“提醒”语义，避免用户误读为任务日期
 
 ## 开发规范
 - `已解决的问题记录` 是历史修复与避坑清单，不是待办列表；不能把其中条目当作下一步待开发内容。
@@ -119,7 +120,7 @@ com.example.mydaibanapp
 - 提醒功能如新增字段，所有编辑路径都必须保留字段（TaskListFragment和DateTaskFragment都要同步），否则会复现createTime/priority同类丢字段问题
 - 普通待办提醒默认不申请精确闹钟权限；若未来要承诺准点提醒，再评估`SCHEDULE_EXACT_ALARM`权限、上架风险和用户授权流程
 - 待办列表UI优先保持紧凑，首页分组应使用单RecyclerView结构，避免嵌套滚动列表导致性能和复用问题
-- 搜索框处于打开状态时，系统返回键优先退出搜索状态
+- 搜索框处于打开状态时，系统返回键优先退出搜索状态并恢复完整列表；隐藏的Fragment不能继续拦截返回键
 - 用户测试通过并允许提交时，再一次性更新CLAUDE.md并提交git；用户明确要求暂不更新文档时不要提前改CLAUDE.md
 - **每次改完代码必须运行 `JAVA_HOME="D:/android/jbr" ./gradlew lint` 和 `JAVA_HOME="D:/android/jbr" ./gradlew assembleDebug` 检查错误，确认无错误后再提交git**
 - MainActivity若采用多root Fragment的`add + hide/show`结构，配置变更恢复时要显式保存/恢复当前tab，不要依赖`findFragmentById()`判断当前显示页；切tab时优先清理back stack中的覆盖页，再统一同步root Fragment显隐状态

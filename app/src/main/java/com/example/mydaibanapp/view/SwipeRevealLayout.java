@@ -5,6 +5,7 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
@@ -12,8 +13,8 @@ import androidx.annotation.Nullable;
 
 public class SwipeRevealLayout extends FrameLayout {
     private static final long ANIMATION_DURATION_MS = 160L;
-    private static final float EXTRA_DRAG_DP = 88f;
-    private static final float EXTRA_DRAG_RESISTANCE = 0.35f;
+    private static final float EXTRA_DRAG_DP = 140f;
+    private static final float EXTRA_DRAG_RESISTANCE = 0.7f;
 
     private View foregroundView;
     private View revealView;
@@ -24,6 +25,7 @@ public class SwipeRevealLayout extends FrameLayout {
     private float startTranslationX;
     private boolean dragging;
     private boolean dragStartNotified;
+    private boolean draggedBeyondAction;
     private boolean open;
     private OnRevealStateChangeListener revealStateChangeListener;
 
@@ -65,7 +67,7 @@ public class SwipeRevealLayout extends FrameLayout {
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        if (foregroundView == null || getRevealWidth() == 0) {
+        if (foregroundView == null || getActionWidth() == 0) {
             return super.onInterceptTouchEvent(ev);
         }
 
@@ -76,6 +78,7 @@ public class SwipeRevealLayout extends FrameLayout {
                 startTranslationX = foregroundView.getTranslationX();
                 dragging = false;
                 dragStartNotified = false;
+                draggedBeyondAction = false;
                 break;
             case MotionEvent.ACTION_MOVE:
                 float dx = ev.getX() - downX;
@@ -94,7 +97,7 @@ public class SwipeRevealLayout extends FrameLayout {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (foregroundView == null || getRevealWidth() == 0) {
+        if (foregroundView == null || getActionWidth() == 0) {
             return super.onTouchEvent(event);
         }
 
@@ -105,6 +108,7 @@ public class SwipeRevealLayout extends FrameLayout {
                 startTranslationX = foregroundView.getTranslationX();
                 dragging = false;
                 dragStartNotified = false;
+                draggedBeyondAction = false;
                 return true;
             case MotionEvent.ACTION_MOVE:
                 float dx = event.getX() - downX;
@@ -115,6 +119,7 @@ public class SwipeRevealLayout extends FrameLayout {
                 }
                 if (dragging) {
                     float nextTranslation = applyDragResistance(startTranslationX + dx);
+                    draggedBeyondAction = nextTranslation < -getActionWidth();
                     foregroundView.setTranslationX(nextTranslation);
                     return true;
                 }
@@ -122,11 +127,11 @@ public class SwipeRevealLayout extends FrameLayout {
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
                 if (dragging) {
-                    boolean shouldOpen = foregroundView.getTranslationX() <= -getRevealWidth() / 2f;
+                    boolean shouldOpen = foregroundView.getTranslationX() <= -getActionWidth() / 2f;
                     if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
                         shouldOpen = open;
                     }
-                    settle(shouldOpen, true);
+                    settle(shouldOpen, true, draggedBeyondAction);
                     dragging = false;
                     getParent().requestDisallowInterceptTouchEvent(false);
                     return true;
@@ -148,11 +153,11 @@ public class SwipeRevealLayout extends FrameLayout {
     }
 
     public void open(boolean animate) {
-        settle(true, animate);
+        settle(true, animate, false);
     }
 
     public void close(boolean animate) {
-        settle(false, animate);
+        settle(false, animate, false);
     }
 
     public void setOnRevealStateChangeListener(OnRevealStateChangeListener listener) {
@@ -167,12 +172,16 @@ public class SwipeRevealLayout extends FrameLayout {
         }
     }
 
-    private void settle(boolean shouldOpen, boolean animate) {
-        float target = shouldOpen ? -getRevealWidth() : 0;
+    private void settle(boolean shouldOpen, boolean animate, boolean fromOverDrag) {
+        float target = shouldOpen ? -getActionWidth() : 0;
         if (animate) {
+            foregroundView.animate().cancel();
             foregroundView.animate()
                     .translationX(target)
                     .setDuration(ANIMATION_DURATION_MS)
+                    .setInterpolator(shouldOpen && !fromOverDrag
+                            ? new android.view.animation.OvershootInterpolator(0.7f)
+                            : new android.view.animation.DecelerateInterpolator())
                     .withEndAction(() -> updateOpenState(shouldOpen))
                     .start();
         } else {
@@ -201,15 +210,25 @@ public class SwipeRevealLayout extends FrameLayout {
         return revealView != null ? revealView.getWidth() : 0;
     }
 
+    private int getActionWidth() {
+        if (revealView instanceof ViewGroup) {
+            ViewGroup revealGroup = (ViewGroup) revealView;
+            if (revealGroup.getChildCount() > 0 && revealGroup.getChildAt(0).getWidth() > 0) {
+                return revealGroup.getChildAt(0).getWidth();
+            }
+        }
+        return getRevealWidth();
+    }
+
     private float applyDragResistance(float value) {
-        int revealWidth = getRevealWidth();
+        int actionWidth = getActionWidth();
         if (value >= 0) {
             return 0;
         }
-        if (value >= -revealWidth) {
+        if (value >= -actionWidth) {
             return value;
         }
-        float extra = Math.min((-value - revealWidth) * EXTRA_DRAG_RESISTANCE, maxExtraDrag);
-        return -revealWidth - extra;
+        float extra = Math.min((-value - actionWidth) * EXTRA_DRAG_RESISTANCE, maxExtraDrag);
+        return -actionWidth - extra;
     }
 }

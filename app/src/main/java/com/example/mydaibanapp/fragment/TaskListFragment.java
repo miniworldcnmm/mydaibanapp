@@ -194,6 +194,7 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
     private void hideSearch() {
         isSearchVisible = false;
         updateSearchBackCallback();
+        refreshList();
         binding.searchOverlay.animate()
                 .alpha(0f)
                 .scaleX(0.5f)
@@ -203,6 +204,7 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
                     binding.searchOverlay.setVisibility(View.GONE);
                     binding.etSearch.setText("");
                     viewModel.clearSearch();
+                    refreshList();
                 })
                 .start();
         android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
@@ -221,8 +223,28 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
 
     private void updateSearchBackCallback() {
         if (searchBackCallback != null) {
-            searchBackCallback.setEnabled(isSearchVisible);
+            searchBackCallback.setEnabled(isSearchVisible && isResumed() && !isHidden());
         }
+    }
+
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        updateSearchBackCallback();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateSearchBackCallback();
+    }
+
+    @Override
+    public void onPause() {
+        if (searchBackCallback != null) {
+            searchBackCallback.setEnabled(false);
+        }
+        super.onPause();
     }
 
     private void observeTasks() {

@@ -190,12 +190,12 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
         tomorrow.add(Calendar.DAY_OF_MONTH, 1);
 
         if (isSameDay(reminder, today)) {
-            return "今天 " + time;
+            return "今天 " + time + " 提醒";
         }
         if (isSameDay(reminder, tomorrow)) {
-            return "明天 " + time;
+            return "明天 " + time + " 提醒";
         }
-        return String.format(Locale.getDefault(), "%d月%d日 %s",
+        return String.format(Locale.getDefault(), "%d月%d日 %s 提醒",
                 reminder.get(Calendar.MONTH) + 1, reminder.get(Calendar.DAY_OF_MONTH), time);
     }
 
