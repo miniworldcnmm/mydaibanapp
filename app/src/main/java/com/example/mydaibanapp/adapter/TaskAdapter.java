@@ -1,21 +1,25 @@
 package com.example.mydaibanapp.adapter;
 
 import android.graphics.Paint;
-import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.ImageButton;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.example.mydaibanapp.R;
 import com.example.mydaibanapp.data.Task;
+
+import java.util.Calendar;
+import java.util.Locale;
 
 public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
     private OnTaskClickListener listener;
@@ -47,12 +51,21 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
         holder.cbCompleted.setOnCheckedChangeListener(null);
         holder.cbCompleted.setChecked(task.isCompleted());
 
+        if (task.getReminderAt() != null) {
+            holder.tvReminder.setVisibility(View.VISIBLE);
+            holder.tvReminder.setText(formatReminderText(task.getReminderAt()));
+        } else {
+            holder.tvReminder.setVisibility(View.GONE);
+        }
+
         if (task.isCompleted()) {
             holder.tvTitle.setPaintFlags(holder.tvTitle.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
             holder.tvDescription.setPaintFlags(holder.tvDescription.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+            holder.tvReminder.setPaintFlags(holder.tvReminder.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
         } else {
             holder.tvTitle.setPaintFlags(holder.tvTitle.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
             holder.tvDescription.setPaintFlags(holder.tvDescription.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
+            holder.tvReminder.setPaintFlags(holder.tvReminder.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
         }
 
         // 优先级圆点显示
@@ -76,11 +89,36 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
         holder.btnDelete.setOnClickListener(v -> listener.onTaskDelete(task));
     }
 
+    private String formatReminderText(long reminderAt) {
+        Calendar reminder = Calendar.getInstance();
+        reminder.setTimeInMillis(reminderAt);
+        Calendar today = Calendar.getInstance();
+        Calendar tomorrow = (Calendar) today.clone();
+        tomorrow.add(Calendar.DAY_OF_MONTH, 1);
+
+        String time = String.format(Locale.getDefault(), "%02d:%02d",
+                reminder.get(Calendar.HOUR_OF_DAY), reminder.get(Calendar.MINUTE));
+        if (isSameDay(reminder, today)) {
+            return "今天 " + time + " 提醒";
+        }
+        if (isSameDay(reminder, tomorrow)) {
+            return "明天 " + time + " 提醒";
+        }
+        return String.format(Locale.getDefault(), "%d月%d日 %s 提醒",
+                reminder.get(Calendar.MONTH) + 1, reminder.get(Calendar.DAY_OF_MONTH), time);
+    }
+
+    private boolean isSameDay(Calendar first, Calendar second) {
+        return first.get(Calendar.YEAR) == second.get(Calendar.YEAR)
+                && first.get(Calendar.DAY_OF_YEAR) == second.get(Calendar.DAY_OF_YEAR);
+    }
+
     public static class TaskViewHolder extends RecyclerView.ViewHolder {
         CheckBox cbCompleted;
         View priorityDot;
         TextView tvTitle;
         TextView tvDescription;
+        TextView tvReminder;
         ImageButton btnDelete;
 
         public TaskViewHolder(@NonNull View itemView) {
@@ -89,6 +127,7 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
             priorityDot = itemView.findViewById(R.id.viewPriorityDot);
             tvTitle = itemView.findViewById(R.id.tvTaskTitle);
             tvDescription = itemView.findViewById(R.id.tvTaskDescription);
+            tvReminder = itemView.findViewById(R.id.tvTaskReminder);
             btnDelete = itemView.findViewById(R.id.btnDelete);
         }
     }

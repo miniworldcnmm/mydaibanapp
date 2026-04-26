@@ -10,4 +10,11 @@
     <string name="priority_high">高</string>
     <string name="filter_priority">按优先级</string>
     <string name="priority_label">优先级</string>
+    <string name="reminder_label">提醒时间</string>
+    <string name="reminder_none">不设置提醒</string>
+    <string name="reminder_clear">清除提醒</string>
+    <string name="reminder_permission_hint">通知权限未开启，提醒可能不会弹出</string>
+    <string name="notification_task_reminder_title">待办提醒</string>
+    <string name="notification_channel_task_reminders">任务提醒</string>
+    <string name="notification_channel_task_reminders_desc">待办任务到点提醒</string>
 </resources>

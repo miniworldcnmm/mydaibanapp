@@ -2,24 +2,31 @@ package com.example.mydaibanapp.fragment;
 
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
+
+import com.example.mydaibanapp.MainActivity;
 import com.example.mydaibanapp.R;
 import com.example.mydaibanapp.adapter.TaskAdapter;
 import com.example.mydaibanapp.data.Task;
 import com.example.mydaibanapp.databinding.DialogAddTaskBinding;
 import com.example.mydaibanapp.databinding.FragmentDateTaskBinding;
 import com.example.mydaibanapp.viewmodel.TaskViewModel;
+
 import java.util.Calendar;
+import java.util.Locale;
 
 public class DateTaskFragment extends Fragment implements TaskAdapter.OnTaskClickListener {
 
@@ -64,7 +71,6 @@ public class DateTaskFragment extends Fragment implements TaskAdapter.OnTaskClic
         binding.rvDateTasks.setAdapter(adapter);
         binding.rvDateTasks.setLayoutManager(new LinearLayoutManager(requireContext()));
 
-        // 左右切换日期
         binding.btnPrevDate.setOnClickListener(v -> {
             currentDate.add(Calendar.DAY_OF_MONTH, -1);
             loadDateTasks();
@@ -75,14 +81,12 @@ public class DateTaskFragment extends Fragment implements TaskAdapter.OnTaskClic
             loadDateTasks();
         });
 
-        // 添加待办按钮，传入当前日期作为默认日期
         binding.fabAddDateTask.setOnClickListener(v -> {
             long startOfDay = TaskViewModel.getStartOfDay(currentDate);
             AddTaskBottomSheet bottomSheet = AddTaskBottomSheet.newInstance(startOfDay);
             bottomSheet.show(getChildFragmentManager(), "AddTaskBottomSheet");
         });
 
-        // 观察当日待办数据
         viewModel.getTasksByDate().observe(getViewLifecycleOwner(), tasks -> {
             if (tasks != null && !tasks.isEmpty()) {
                 binding.tvEmptyState.setVisibility(View.GONE);
@@ -99,10 +103,7 @@ public class DateTaskFragment extends Fragment implements TaskAdapter.OnTaskClic
     }
 
     private void loadDateTasks() {
-        // 更新标题
         updateDateTitle();
-
-        // 设置查询日期范围
         long startOfDay = TaskViewModel.getStartOfDay(currentDate);
         long endOfDay = TaskViewModel.getEndOfDay(currentDate);
         viewModel.setDate(startOfDay, endOfDay);
@@ -143,15 +144,18 @@ public class DateTaskFragment extends Fragment implements TaskAdapter.OnTaskClic
             dialogBinding.etDescription.setText(task.getDescription());
         }
 
-        // 日期选择 - 使用数组包装以在lambda中修改
         final Long[] editDueDate = {task.getDueDate()};
         TextView tvDueDate = dialogBinding.tvDueDate;
         ImageButton btnPickDate = dialogBinding.btnPickDate;
         ImageButton btnClearDate = dialogBinding.btnClearDate;
-
         updateDateDisplay(tvDueDate, btnClearDate, editDueDate[0]);
 
-        // 优先级选择
+        final Long[] editReminderAt = {task.getReminderAt()};
+        TextView tvReminder = dialogBinding.tvReminder;
+        ImageButton btnPickReminder = dialogBinding.btnPickReminder;
+        ImageButton btnClearReminder = dialogBinding.btnClearReminder;
+        updateReminderDisplay(tvReminder, btnClearReminder, editReminderAt[0]);
+
         com.google.android.material.chip.ChipGroup chipGroupPriority = dialogBinding.chipGroupPriority;
         int taskPriority = task.getPriority();
         switch (taskPriority) {
@@ -198,6 +202,14 @@ public class DateTaskFragment extends Fragment implements TaskAdapter.OnTaskClic
             updateDateDisplay(tvDueDate, btnClearDate, null);
         });
 
+        btnPickReminder.setOnClickListener(v ->
+                showReminderDatePicker(editReminderAt, tvReminder, btnClearReminder));
+
+        btnClearReminder.setOnClickListener(v -> {
+            editReminderAt[0] = null;
+            updateReminderDisplay(tvReminder, btnClearReminder, null);
+        });
+
         AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setView(dialogBinding.getRoot())
                 .setTitle("编辑任务")
@@ -219,6 +231,7 @@ public class DateTaskFragment extends Fragment implements TaskAdapter.OnTaskClic
                 updatedTask.setCreateTime(task.getCreateTime());
                 updatedTask.setDueDate(editDueDate[0]);
                 updatedTask.setPriority(editPriority[0]);
+                updatedTask.setReminderAt(editReminderAt[0]);
                 viewModel.updateTask(updatedTask);
                 dialog.dismiss();
             });
@@ -229,7 +242,7 @@ public class DateTaskFragment extends Fragment implements TaskAdapter.OnTaskClic
     private void updateDateDisplay(TextView tvDueDate, ImageButton btnClearDate, Long dueDate) {
         if (dueDate == null) {
             tvDueDate.setText("不设置日期");
-            tvDueDate.setTextColor(getResources().getColor(com.example.mydaibanapp.R.color.dark_gray, null));
+            tvDueDate.setTextColor(getResources().getColor(R.color.dark_gray, null));
             btnClearDate.setVisibility(View.GONE);
         } else {
             Calendar cal = Calendar.getInstance();
@@ -239,8 +252,93 @@ public class DateTaskFragment extends Fragment implements TaskAdapter.OnTaskClic
             String[] weekDays = {"日", "一", "二", "三", "四", "五", "六"};
             String weekDay = weekDays[cal.get(Calendar.DAY_OF_WEEK) - 1];
             tvDueDate.setText(month + "月" + day + "日 星期" + weekDay);
-            tvDueDate.setTextColor(getResources().getColor(com.example.mydaibanapp.R.color.hand_drawn_blue, null));
+            tvDueDate.setTextColor(getResources().getColor(R.color.hand_drawn_blue, null));
             btnClearDate.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void showReminderDatePicker(final Long[] reminderAtHolder, TextView tvReminder,
+                                        ImageButton btnClearReminder) {
+        Calendar cal = getInitialReminderCalendar(reminderAtHolder[0]);
+        DatePickerDialog datePickerDialog = new DatePickerDialog(requireContext(),
+                (view, selectedYear, selectedMonth, selectedDay) -> {
+                    Calendar selected = (Calendar) cal.clone();
+                    selected.set(selectedYear, selectedMonth, selectedDay);
+                    showReminderTimePicker(selected, reminderAtHolder, tvReminder, btnClearReminder);
+                }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH));
+        datePickerDialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
+        datePickerDialog.show();
+    }
+
+    private void showReminderTimePicker(Calendar selected, final Long[] reminderAtHolder,
+                                        TextView tvReminder, ImageButton btnClearReminder) {
+        TimePickerDialog timePickerDialog = new TimePickerDialog(requireContext(),
+                (view, hourOfDay, minute) -> {
+                    selected.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                    selected.set(Calendar.MINUTE, minute);
+                    selected.set(Calendar.SECOND, 0);
+                    selected.set(Calendar.MILLISECOND, 0);
+                    if (selected.getTimeInMillis() <= System.currentTimeMillis()) {
+                        Toast.makeText(requireContext(), "提醒时间必须晚于现在", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    reminderAtHolder[0] = selected.getTimeInMillis();
+                    updateReminderDisplay(tvReminder, btnClearReminder, reminderAtHolder[0]);
+                    requestNotificationPermissionIfNeeded();
+                }, selected.get(Calendar.HOUR_OF_DAY), selected.get(Calendar.MINUTE), true);
+        timePickerDialog.show();
+    }
+
+    private Calendar getInitialReminderCalendar(Long reminderAt) {
+        Calendar cal = Calendar.getInstance();
+        if (reminderAt != null) {
+            cal.setTimeInMillis(reminderAt);
+        } else {
+            cal.add(Calendar.HOUR_OF_DAY, 1);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+        }
+        return cal;
+    }
+
+    private void updateReminderDisplay(TextView tvReminder, ImageButton btnClearReminder, Long reminderAt) {
+        if (reminderAt == null) {
+            tvReminder.setText(R.string.reminder_none);
+            tvReminder.setTextColor(getResources().getColor(R.color.dark_gray, null));
+            btnClearReminder.setVisibility(View.GONE);
+            return;
+        }
+        tvReminder.setText(formatReminderText(reminderAt));
+        tvReminder.setTextColor(getResources().getColor(R.color.hand_drawn_blue, null));
+        btnClearReminder.setVisibility(View.VISIBLE);
+    }
+
+    private String formatReminderText(long timeMillis) {
+        Calendar reminder = Calendar.getInstance();
+        reminder.setTimeInMillis(timeMillis);
+        Calendar today = Calendar.getInstance();
+        Calendar tomorrow = (Calendar) today.clone();
+        tomorrow.add(Calendar.DAY_OF_MONTH, 1);
+        String time = String.format(Locale.getDefault(), "%02d:%02d",
+                reminder.get(Calendar.HOUR_OF_DAY), reminder.get(Calendar.MINUTE));
+        if (isSameDay(reminder, today)) {
+            return "今天 " + time + " 提醒";
+        }
+        if (isSameDay(reminder, tomorrow)) {
+            return "明天 " + time + " 提醒";
+        }
+        return String.format(Locale.getDefault(), "%d月%d日 %s 提醒",
+                reminder.get(Calendar.MONTH) + 1, reminder.get(Calendar.DAY_OF_MONTH), time);
+    }
+
+    private boolean isSameDay(Calendar first, Calendar second) {
+        return first.get(Calendar.YEAR) == second.get(Calendar.YEAR)
+                && first.get(Calendar.DAY_OF_YEAR) == second.get(Calendar.DAY_OF_YEAR);
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).requestNotificationPermissionIfNeeded();
         }
     }
 

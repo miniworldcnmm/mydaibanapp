@@ -1,6 +1,6 @@
 # 我的待办 - 手绘风格待办APP
 ## 项目介绍
-这是一个简单易用的安卓待办APP，采用手绘风格的界面设计，支持任务的添加、编辑、删除、标记完成、筛选查看、搜索、优先级标记等功能，专为安卓开发小白打造，代码结构清晰易懂。
+这是一个简单易用的安卓待办APP，采用手绘风格的界面设计，支持任务的添加、编辑、删除、标记完成、筛选查看、搜索、优先级标记、到点提醒通知等功能，专为安卓开发小白打造，代码结构清晰易懂。
 
 ## 技术栈
 - 语言：纯Java，无Kotlin依赖，兼容性更好
@@ -14,11 +14,15 @@
 ```
 com.example.mydaibanapp
 ├── data/          # 数据层
-│   ├── Task.java       # 任务实体类（含dueDate、priority字段）
-│   ├── TaskDao.java    # 数据库操作接口（含日期范围查询、LIKE搜索、优先级筛选）
-│   └── AppDatabase.java # Room数据库配置（v3迁移）
+│   ├── Task.java       # 任务实体类（含dueDate、priority、reminderAt字段）
+│   ├── TaskDao.java    # 数据库操作接口（含日期范围查询、LIKE搜索、优先级筛选、提醒同步查询）
+│   └── AppDatabase.java # Room数据库配置（v4迁移）
 ├── repository/    # 数据仓库层，统一管理数据源
-│   └── TaskRepository.java
+│   └── TaskRepository.java # 增删改完成状态时联动提醒调度/取消
+├── reminder/      # 本地提醒层
+│   ├── TaskReminderScheduler.java # AlarmManager提醒注册/取消/重排
+│   ├── TaskReminderReceiver.java  # 到点后校验任务并发送通知
+│   └── BootReceiver.java          # 开机/App更新后重排未来提醒
 ├── viewmodel/     # ViewModel层，处理业务逻辑，持有UI数据
 │   └── TaskViewModel.java
 ├── fragment/      # Fragment层
@@ -26,7 +30,7 @@ com.example.mydaibanapp
 │   ├── CalendarFragment.java  # 日历页面
 │   ├── DateTaskFragment.java  # 日期待办页面（含优先级ChipGroup编辑）
 │   ├── SettingsFragment.java  # 设置页面
-│   └── AddTaskBottomSheet.java # 底部滑出添加任务面板（含优先级选择）
+│   └── AddTaskBottomSheet.java # 底部滑出添加任务面板（含优先级和提醒时间选择）
 ├── adapter/       # 列表适配器
 │   └── TaskAdapter.java
 └── MainActivity.java # 主界面（Fragment容器，三tab导航）
@@ -45,6 +49,7 @@ com.example.mydaibanapp
 ✅ 任务日期：添加/编辑任务时可选择日期（DatePicker），可清除，日历蓝点仅显示有dueDate的任务
 ✅ 任务搜索：Toolbar搜索按钮点击展开椭圆搜索框（动画从右上展开），LIKE模糊搜索标题和描述，实时过滤结果，清除按钮一键重置
 ✅ 任务优先级：4级标记（无/低/中/高），列表项彩色圆点指示，BottomSheet/编辑对话框ChipGroup选择，菜单子菜单筛选
+✅ 任务提醒通知：添加/编辑任务可选择具体提醒时间，到点通过系统通知提醒；完成、删除或改期后自动取消/重排提醒
 ✅ 筛选状态保存：切换底部tab或旋转屏幕不丢失筛选和搜索状态（ViewModel保存+onSaveInstanceState）
 ✅ 空状态提示：搜索无结果/筛选无匹配时显示上下文提示文字
 
@@ -87,8 +92,11 @@ com.example.mydaibanapp
 30. Room的@Query参数化防SQL注入：Room用prepared statement，:query参数不会被注入，但LIKE通配符（%和_）在用户输入中不会被转义，本地APP影响不大
 31. ChipGroup selectionRequired=false风险：用户可能取消所有chip选中导致priority值停留在上一次设置，需注意或改用selectionRequired=true
 32. 深色模式切换后Fragment重叠：`AppCompatDelegate.setDefaultNightMode()`会触发Activity重建，MainActivity不能用`findFragmentById(R.id.fragment_container)`推断当前root Fragment；应保存当前底部导航tab（如`currentTabId`），重建后按tab恢复，并统一`hide`所有root fragment后只`show`目标页，避免SettingsFragment残留覆盖待办/日历页
+33. 任务提醒通知MVP：新增`reminderAt`字段和Room v4迁移；用`AlarmManager.setAndAllowWhileIdle()`注册提醒，`TaskReminderReceiver`到点二次查询数据库，确认任务未完成、未删除且提醒时间匹配后再发通知；`BootReceiver`必须用`goAsync()`重排，避免开机广播返回后后台线程被系统中断
+34. 提醒测试结论：用户已完成基本手动测试，提醒能正常弹出；但不申请`SCHEDULE_EXACT_ALARM`，省电/Doze/厂商后台策略下即使App在前台也可能出现较大延迟，这是当前MVP的系统调度取舍，不应误判为时区问题
 
 ## 开发规范
+- `已解决的问题记录` 是历史修复与避坑清单，不是待办列表；不能把其中条目当作下一步待开发内容。
 - 遵循MVVM架构分层，各层职责明确，低耦合高内聚
 - 使用View Binding替代findViewById，类型安全空安全
 - 数据库操作全部在后台线程执行，不阻塞UI主线程
@@ -97,5 +105,7 @@ com.example.mydaibanapp
 - Toolbar如需隐藏视觉效果，用背景色融入+elevation=0dp的方式，保留功能（菜单等）
 - 注意API兼容性：minSDK 29，避免使用高版本API（如Stream#toList()需API 34），可用`JAVA_HOME="D:/android/jbr" ./gradlew lint`检查
 - Room实体类必须实现equals()和hashCode()，否则DiffUtil无法正确比较内容变化
+- 提醒功能如新增字段，所有编辑路径都必须保留字段（TaskListFragment和DateTaskFragment都要同步），否则会复现createTime/priority同类丢字段问题
+- 普通待办提醒默认不申请精确闹钟权限；若未来要承诺准点提醒，再评估`SCHEDULE_EXACT_ALARM`权限、上架风险和用户授权流程
 - **每次改完代码必须运行 `JAVA_HOME="D:/android/jbr" ./gradlew lint` 和 `JAVA_HOME="D:/android/jbr" ./gradlew assembleDebug` 检查错误，确认无错误后再提交git**
 - MainActivity若采用多root Fragment的`add + hide/show`结构，配置变更恢复时要显式保存/恢复当前tab，不要依赖`findFragmentById()`判断当前显示页；切tab时优先清理back stack中的覆盖页，再统一同步root Fragment显隐状态

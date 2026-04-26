@@ -1,10 +1,14 @@
 package com.example.mydaibanapp.repository;
 
 import android.app.Application;
+
 import androidx.lifecycle.LiveData;
+
 import com.example.mydaibanapp.data.AppDatabase;
 import com.example.mydaibanapp.data.Task;
 import com.example.mydaibanapp.data.TaskDao;
+import com.example.mydaibanapp.reminder.TaskReminderScheduler;
+
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -15,6 +19,7 @@ public class TaskRepository {
     private LiveData<List<Task>> completedTasks;
     private LiveData<List<Task>> allTasks;
     private ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private TaskReminderScheduler reminderScheduler;
 
     public TaskRepository(Application application) {
         AppDatabase db = AppDatabase.getDatabase(application);
@@ -22,6 +27,8 @@ public class TaskRepository {
         activeTasks = taskDao.getActiveTasks();
         completedTasks = taskDao.getCompletedTasks();
         allTasks = taskDao.getAllTasks();
+        reminderScheduler = new TaskReminderScheduler(application);
+        TaskReminderScheduler.rescheduleAllAsync(application);
     }
 
     public LiveData<List<Task>> getActiveTasks() { return activeTasks; }
@@ -37,19 +44,37 @@ public class TaskRepository {
     }
 
     public void insertTask(Task task) {
-        executorService.execute(() -> taskDao.insertTask(task));
+        executorService.execute(() -> {
+            long taskId = taskDao.insertTask(task);
+            task.setId((int) taskId);
+            syncReminder(task);
+        });
     }
 
     public void updateTask(Task task) {
-        executorService.execute(() -> taskDao.updateTask(task));
+        executorService.execute(() -> {
+            taskDao.updateTask(task);
+            syncReminder(task);
+        });
     }
 
     public void deleteTask(Task task) {
-        executorService.execute(() -> taskDao.deleteTask(task));
+        executorService.execute(() -> {
+            taskDao.deleteTask(task);
+            reminderScheduler.cancel(task.getId());
+        });
     }
 
     public void toggleTaskCompletion(int taskId, boolean isCompleted) {
-        executorService.execute(() -> taskDao.toggleTaskCompletion(taskId, isCompleted));
+        executorService.execute(() -> {
+            taskDao.toggleTaskCompletion(taskId, isCompleted);
+            Task task = taskDao.getTaskByIdSync(taskId);
+            if (task == null || isCompleted) {
+                reminderScheduler.cancel(taskId);
+            } else {
+                syncReminder(task);
+            }
+        });
     }
 
     public LiveData<List<Task>> searchTasks(String query) {
@@ -62,5 +87,17 @@ public class TaskRepository {
 
     public LiveData<List<Task>> getTasksByPriority(int priority) {
         return taskDao.getTasksByPriority(priority);
+    }
+
+    private void syncReminder(Task task) {
+        if (task == null || task.isCompleted()
+                || task.getReminderAt() == null
+                || task.getReminderAt() <= System.currentTimeMillis()) {
+            if (task != null) {
+                reminderScheduler.cancel(task.getId());
+            }
+            return;
+        }
+        reminderScheduler.schedule(task);
     }
 }

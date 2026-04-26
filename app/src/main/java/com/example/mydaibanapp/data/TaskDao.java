@@ -21,7 +21,7 @@ public interface TaskDao {
     LiveData<List<Task>> getAllTasks();
 
     @Insert
-    void insertTask(Task task);
+    long insertTask(Task task);
 
     @Update
     void updateTask(Task task);
@@ -31,6 +31,12 @@ public interface TaskDao {
 
     @Query("UPDATE tasks SET isCompleted = :isCompleted WHERE id = :taskId")
     void toggleTaskCompletion(int taskId, boolean isCompleted);
+
+    @Query("SELECT * FROM tasks WHERE id = :taskId LIMIT 1")
+    Task getTaskByIdSync(int taskId);
+
+    @Query("SELECT * FROM tasks WHERE isCompleted = 0 AND reminderAt IS NOT NULL AND reminderAt > :now")
+    List<Task> getPendingReminderTasks(long now);
 
     // 查询指定日期（当天0点~次日0点）的所有待办
     @Query("SELECT * FROM tasks WHERE dueDate >= :startOfDay AND dueDate < :endOfDay ORDER BY createTime DESC")
@@ -52,3 +58,4 @@ public interface TaskDao {
     @Query("SELECT * FROM tasks WHERE priority = :priority ORDER BY createTime DESC")
     LiveData<List<Task>> getTasksByPriority(int priority);
 }
+

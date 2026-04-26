@@ -1,7 +1,8 @@
 package com.example.mydaibanapp.fragment;
 
-import android.app.Dialog;
 import android.app.DatePickerDialog;
+import android.app.Dialog;
+import android.app.TimePickerDialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.text.Editable;
@@ -15,16 +16,22 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.ViewModelProvider;
-import com.google.android.material.bottomsheet.BottomSheetBehavior;
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+
+import com.example.mydaibanapp.MainActivity;
 import com.example.mydaibanapp.R;
 import com.example.mydaibanapp.data.Task;
 import com.example.mydaibanapp.databinding.FragmentAddTaskBottomSheetBinding;
 import com.example.mydaibanapp.viewmodel.TaskViewModel;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+
 import java.util.Calendar;
+import java.util.Locale;
 
 public class AddTaskBottomSheet extends BottomSheetDialogFragment {
 
@@ -33,6 +40,7 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
     private FragmentAddTaskBottomSheetBinding binding;
     private TaskViewModel viewModel;
     private Long dueDate = null; // null表示不设置日期
+    private Long reminderAt = null; // null表示不设置提醒
     private int priority = 0; // 默认无优先级
 
     public static AddTaskBottomSheet newInstance(long defaultDate) {
@@ -43,14 +51,12 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         return fragment;
     }
 
-    // 无参构造，用于待办列表页添加（不预设日期）
     public AddTaskBottomSheet() {
     }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 如果从日历页传入默认日期，则预设
         if (getArguments() != null && getArguments().containsKey(ARG_DEFAULT_DATE)) {
             dueDate = getArguments().getLong(ARG_DEFAULT_DATE);
         }
@@ -70,14 +76,10 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
 
         viewModel = new ViewModelProvider(requireActivity()).get(TaskViewModel.class);
 
-        // 初始状态：发送按钮禁用
         binding.btnSend.setEnabled(false);
         binding.btnSend.setAlpha(0.38f);
-
-        // 发送按钮点击
         binding.btnSend.setOnClickListener(v -> submitTask());
 
-        // 键盘完成按钮提交
         binding.etTitle.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 submitTask();
@@ -86,7 +88,6 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             return false;
         });
 
-        // 标题内容变化控制发送按钮状态
         binding.etTitle.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -104,18 +105,15 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             }
         });
 
-        // 日期选择（使用binding获取视图）
         ImageButton btnPickDate = binding.btnPickDate;
         TextView tvDueDate = binding.tvDueDate;
         ImageButton btnClearDate = binding.btnClearDate;
 
-        // 如果有预设日期，显示
         if (dueDate != null) {
             updateDateDisplay(tvDueDate, btnClearDate);
         }
 
         btnPickDate.setOnClickListener(v -> showDatePicker(tvDueDate, btnClearDate));
-
         btnClearDate.setOnClickListener(v -> {
             dueDate = null;
             tvDueDate.setText("不设置日期");
@@ -123,7 +121,16 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             btnClearDate.setVisibility(View.GONE);
         });
 
-        // 优先级选择
+        ImageButton btnPickReminder = binding.btnPickReminder;
+        TextView tvReminder = binding.tvReminder;
+        ImageButton btnClearReminder = binding.btnClearReminder;
+        updateReminderDisplay(tvReminder, btnClearReminder);
+        btnPickReminder.setOnClickListener(v -> showReminderDatePicker(tvReminder, btnClearReminder));
+        btnClearReminder.setOnClickListener(v -> {
+            reminderAt = null;
+            updateReminderDisplay(tvReminder, btnClearReminder);
+        });
+
         binding.chipGroupPriority.setOnCheckedChangeListener((group, checkedId) -> {
             if (checkedId == R.id.chipPriorityNone) {
                 priority = 0;
@@ -136,7 +143,6 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             }
         });
 
-        // 自动聚焦标题输入框
         binding.etTitle.requestFocus();
     }
 
@@ -160,6 +166,58 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         datePickerDialog.show();
     }
 
+    private void showReminderDatePicker(TextView tvReminder, ImageButton btnClearReminder) {
+        Calendar cal = getInitialReminderCalendar();
+        DatePickerDialog datePickerDialog = new DatePickerDialog(requireContext(),
+                (view, selectedYear, selectedMonth, selectedDay) -> {
+                    Calendar selected = (Calendar) cal.clone();
+                    selected.set(selectedYear, selectedMonth, selectedDay);
+                    showReminderTimePicker(selected, tvReminder, btnClearReminder);
+                }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH));
+        datePickerDialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
+        datePickerDialog.show();
+    }
+
+    private void showReminderTimePicker(Calendar selected, TextView tvReminder, ImageButton btnClearReminder) {
+        TimePickerDialog timePickerDialog = new TimePickerDialog(requireContext(),
+                (view, hourOfDay, minute) -> {
+                    selected.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                    selected.set(Calendar.MINUTE, minute);
+                    selected.set(Calendar.SECOND, 0);
+                    selected.set(Calendar.MILLISECOND, 0);
+                    if (selected.getTimeInMillis() <= System.currentTimeMillis()) {
+                        Toast.makeText(requireContext(), "提醒时间必须晚于现在", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    reminderAt = selected.getTimeInMillis();
+                    updateReminderDisplay(tvReminder, btnClearReminder);
+                    requestNotificationPermissionIfNeeded();
+                }, selected.get(Calendar.HOUR_OF_DAY), selected.get(Calendar.MINUTE), true);
+        timePickerDialog.show();
+    }
+
+    private Calendar getInitialReminderCalendar() {
+        Calendar cal = Calendar.getInstance();
+        if (reminderAt != null) {
+            cal.setTimeInMillis(reminderAt);
+            return cal;
+        }
+        if (dueDate != null) {
+            cal.setTimeInMillis(dueDate);
+            cal.set(Calendar.HOUR_OF_DAY, 9);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
+            if (cal.getTimeInMillis() > System.currentTimeMillis()) {
+                return cal;
+            }
+        }
+        cal.add(Calendar.HOUR_OF_DAY, 1);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MILLISECOND, 0);
+        return cal;
+    }
+
     private void updateDateDisplay(TextView tvDueDate, ImageButton btnClearDate) {
         if (dueDate == null) {
             tvDueDate.setText("不设置日期");
@@ -178,20 +236,53 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         btnClearDate.setVisibility(View.VISIBLE);
     }
 
+    private void updateReminderDisplay(TextView tvReminder, ImageButton btnClearReminder) {
+        if (reminderAt == null) {
+            tvReminder.setText(R.string.reminder_none);
+            tvReminder.setTextColor(getResources().getColor(R.color.dark_gray, null));
+            btnClearReminder.setVisibility(View.GONE);
+            return;
+        }
+        tvReminder.setText(formatReminderText(reminderAt));
+        tvReminder.setTextColor(getResources().getColor(R.color.hand_drawn_blue, null));
+        btnClearReminder.setVisibility(View.VISIBLE);
+    }
+
+    private String formatReminderText(long timeMillis) {
+        Calendar reminder = Calendar.getInstance();
+        reminder.setTimeInMillis(timeMillis);
+        Calendar today = Calendar.getInstance();
+        Calendar tomorrow = (Calendar) today.clone();
+        tomorrow.add(Calendar.DAY_OF_MONTH, 1);
+        String time = String.format(Locale.getDefault(), "%02d:%02d",
+                reminder.get(Calendar.HOUR_OF_DAY), reminder.get(Calendar.MINUTE));
+        if (isSameDay(reminder, today)) {
+            return "今天 " + time + " 提醒";
+        }
+        if (isSameDay(reminder, tomorrow)) {
+            return "明天 " + time + " 提醒";
+        }
+        return String.format(Locale.getDefault(), "%d月%d日 %s 提醒",
+                reminder.get(Calendar.MONTH) + 1, reminder.get(Calendar.DAY_OF_MONTH), time);
+    }
+
+    private boolean isSameDay(Calendar first, Calendar second) {
+        return first.get(Calendar.YEAR) == second.get(Calendar.YEAR)
+                && first.get(Calendar.DAY_OF_YEAR) == second.get(Calendar.DAY_OF_YEAR);
+    }
+
     @Override
     public void onStart() {
         super.onStart();
 
         Dialog dialog = getDialog();
         if (dialog != null) {
-            // 设置键盘弹出时调整布局，ALWAYS_VISIBLE 强制弹出键盘
             Window window = dialog.getWindow();
             if (window != null) {
                 window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
                         | WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
             }
 
-            // 配置BottomSheet行为
             View bottomSheet = dialog.findViewById(
                     com.google.android.material.R.id.design_bottom_sheet);
             if (bottomSheet != null) {
@@ -201,7 +292,6 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
             }
         }
 
-        // 双保险：延迟弹出键盘，确保Dialog窗口完全就绪
         if (binding != null) {
             binding.etTitle.postDelayed(() -> {
                 if (binding != null && isAdded()) {
@@ -226,8 +316,15 @@ public class AddTaskBottomSheet extends BottomSheetDialogFragment {
         Task task = new Task(title, description.isEmpty() ? null : description);
         task.setDueDate(dueDate);
         task.setPriority(priority);
+        task.setReminderAt(reminderAt);
         viewModel.insertTask(task);
         dismiss();
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).requestNotificationPermissionIfNeeded();
+        }
     }
 
     @Override

@@ -14,7 +14,7 @@ public class Task {
     private long createTime = System.currentTimeMillis();
     private Long dueDate; // 待办日期的时间戳，null表示未设置
     private int priority = 0; // 0=无 1=低 2=中 3=高
-
+    private Long reminderAt; // 提醒时间戳，null表示不提醒
     public Task(String title, String description) {
         this.title = title;
         this.description = description;
@@ -35,6 +35,8 @@ public class Task {
     public void setDueDate(Long dueDate) { this.dueDate = dueDate; }
     public int getPriority() { return priority; }
     public void setPriority(int priority) { this.priority = priority; }
+    public Long getReminderAt() { return reminderAt; }
+    public void setReminderAt(Long reminderAt) { this.reminderAt = reminderAt; }
 
     @Override
     public boolean equals(Object o) {
@@ -44,11 +46,16 @@ public class Task {
         return id == task.id && isCompleted == task.isCompleted && createTime == task.createTime
                 && priority == task.priority
                 && Objects.equals(title, task.title) && Objects.equals(description, task.description)
-                && Objects.equals(dueDate, task.dueDate);
+                && Objects.equals(dueDate, task.dueDate)
+                && Objects.equals(reminderAt, task.reminderAt);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, title, description, isCompleted, createTime, dueDate, priority);
+        return Objects.hash(id, title, description, isCompleted, createTime, dueDate, priority, reminderAt);
     }
 }
+
+
+
+

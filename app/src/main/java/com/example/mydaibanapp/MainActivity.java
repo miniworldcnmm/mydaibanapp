@@ -1,19 +1,29 @@
 package com.example.mydaibanapp;
 
+import android.Manifest;
+
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.os.Build;
+import android.content.pm.PackageManager;
+import android.widget.Toast;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import com.example.mydaibanapp.databinding.ActivityTaskBinding;
 import com.example.mydaibanapp.fragment.CalendarFragment;
 import com.example.mydaibanapp.fragment.SettingsFragment;
 import com.example.mydaibanapp.fragment.TaskListFragment;
+import com.example.mydaibanapp.reminder.TaskReminderScheduler;
 
 public class MainActivity extends AppCompatActivity {
     private static final String KEY_SELECTED_TAB = "selected_tab";
+    private static final int REQUEST_NOTIFICATION_PERMISSION = 1001;
 
     private ActivityTaskBinding binding;
     private TaskListFragment taskListFragment;
@@ -30,6 +40,8 @@ public class MainActivity extends AppCompatActivity {
 
         binding = ActivityTaskBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        TaskReminderScheduler.rescheduleAllAsync(this);
 
         // 初始化Fragment
         if (savedInstanceState == null) {
@@ -71,6 +83,30 @@ public class MainActivity extends AppCompatActivity {
         // 主题切换重建后，强制同步一次根Fragment可见状态，避免旧页面残留在上层
         if (savedInstanceState != null) {
             syncRootFragmentState();
+        }
+    }
+
+
+    public void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    REQUEST_NOTIFICATION_PERMISSION
+            );
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_NOTIFICATION_PERMISSION
+                && grantResults.length > 0
+                && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, R.string.reminder_permission_hint, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -163,3 +199,4 @@ public class MainActivity extends AppCompatActivity {
         return R.id.nav_tasks;
     }
 }
+
