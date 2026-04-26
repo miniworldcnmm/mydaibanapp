@@ -5,7 +5,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
-import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -17,12 +16,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mydaibanapp.R;
 import com.example.mydaibanapp.data.Task;
+import com.example.mydaibanapp.view.SwipeRevealLayout;
 
 import java.util.Calendar;
 import java.util.Locale;
 
 public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
-    private OnTaskClickListener listener;
+    private final OnTaskClickListener listener;
+    private final SwipeController swipeController;
 
     public interface OnTaskClickListener {
         void onTaskClick(Task task);
@@ -31,8 +32,13 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
     }
 
     public TaskAdapter(OnTaskClickListener listener) {
+        this(listener, new SwipeController());
+    }
+
+    public TaskAdapter(OnTaskClickListener listener, SwipeController swipeController) {
         super(new TaskDiffCallback());
         this.listener = listener;
+        this.swipeController = swipeController;
     }
 
     @NonNull
@@ -46,6 +52,24 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull TaskViewHolder holder, int position) {
         Task task = getItem(position);
+        holder.swipeLayout.setOnRevealStateChangeListener(new SwipeRevealLayout.OnRevealStateChangeListener() {
+            @Override
+            public void onDragStarted(SwipeRevealLayout layout) {
+                swipeController.onDragStarted(layout);
+            }
+
+            @Override
+            public void onOpened(SwipeRevealLayout layout) {
+                swipeController.onOpened(layout);
+            }
+
+            @Override
+            public void onClosed(SwipeRevealLayout layout) {
+                swipeController.onClosed(layout);
+            }
+        });
+        holder.swipeLayout.close(false);
+
         holder.tvTitle.setText(task.getTitle());
         String description = task.getDescription();
         if (description != null && !description.trim().isEmpty()) {
@@ -95,9 +119,31 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
             holder.priorityDot.setVisibility(View.GONE);
         }
 
-        holder.itemView.setOnClickListener(v -> listener.onTaskClick(task));
+        holder.layoutContent.setOnClickListener(v -> listener.onTaskClick(task));
         holder.cbCompleted.setOnCheckedChangeListener((buttonView, isChecked) -> listener.onTaskToggle(task, isChecked));
-        holder.btnDelete.setOnClickListener(v -> listener.onTaskDelete(task));
+        holder.btnDelete.setOnClickListener(v -> {
+            holder.swipeLayout.close(false);
+            listener.onTaskDelete(task);
+        });
+    }
+
+    public void closeOpenSwipe() {
+        swipeController.closeOpen();
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull TaskViewHolder holder) {
+        swipeController.onClosed(holder.swipeLayout);
+        holder.swipeLayout.close(false);
+        holder.swipeLayout.setOnRevealStateChangeListener(null);
+        super.onViewRecycled(holder);
+    }
+
+    @Override
+    public void onViewDetachedFromWindow(@NonNull TaskViewHolder holder) {
+        swipeController.onClosed(holder.swipeLayout);
+        holder.swipeLayout.close(false);
+        super.onViewDetachedFromWindow(holder);
     }
 
     private void setStrikeThrough(TextView textView, boolean shouldStrike) {
@@ -159,6 +205,8 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
     }
 
     public static class TaskViewHolder extends RecyclerView.ViewHolder {
+        SwipeRevealLayout swipeLayout;
+        View layoutContent;
         CheckBox cbCompleted;
         View priorityDot;
         ViewGroup layoutMeta;
@@ -166,10 +214,12 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
         TextView tvDescription;
         TextView tvDate;
         TextView tvReminder;
-        ImageButton btnDelete;
+        TextView btnDelete;
 
         public TaskViewHolder(@NonNull View itemView) {
             super(itemView);
+            swipeLayout = (SwipeRevealLayout) itemView;
+            layoutContent = itemView.findViewById(R.id.layoutTaskContent);
             cbCompleted = itemView.findViewById(R.id.cbTaskCompleted);
             priorityDot = itemView.findViewById(R.id.viewPriorityDot);
             layoutMeta = itemView.findViewById(R.id.layoutTaskMeta);
@@ -178,6 +228,35 @@ public class TaskAdapter extends ListAdapter<Task, TaskAdapter.TaskViewHolder> {
             tvDate = itemView.findViewById(R.id.tvTaskDate);
             tvReminder = itemView.findViewById(R.id.tvTaskReminder);
             btnDelete = itemView.findViewById(R.id.btnDelete);
+        }
+    }
+
+    public static class SwipeController {
+        private SwipeRevealLayout openLayout;
+
+        void onDragStarted(SwipeRevealLayout layout) {
+            if (openLayout != null && openLayout != layout) {
+                openLayout.close(true);
+            }
+        }
+
+        void onOpened(SwipeRevealLayout layout) {
+            if (openLayout != null && openLayout != layout) {
+                openLayout.close(true);
+            }
+            openLayout = layout;
+        }
+
+        void onClosed(SwipeRevealLayout layout) {
+            if (openLayout == layout) {
+                openLayout = null;
+            }
+        }
+
+        void closeOpen() {
+            if (openLayout != null) {
+                openLayout.close(true);
+            }
         }
     }
 

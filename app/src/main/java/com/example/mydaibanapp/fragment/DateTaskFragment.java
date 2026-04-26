@@ -129,12 +129,8 @@ public class DateTaskFragment extends Fragment implements TaskAdapter.OnTaskClic
 
     @Override
     public void onTaskDelete(Task task) {
-        new AlertDialog.Builder(requireContext())
-                .setTitle("删除任务")
-                .setMessage("确定要删除这个任务吗？")
-                .setPositiveButton("删除", (dialog, which) -> viewModel.deleteTask(task))
-                .setNegativeButton("取消", null)
-                .show();
+        adapter.closeOpenSwipe();
+        viewModel.deleteTask(task);
     }
 
     private void showEditTaskDialog(Task task) {

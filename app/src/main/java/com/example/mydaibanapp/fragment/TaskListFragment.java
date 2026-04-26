@@ -19,9 +19,11 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.ConcatAdapter;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import com.example.mydaibanapp.R;
 import com.example.mydaibanapp.adapter.TaskAdapter;
+import com.example.mydaibanapp.adapter.TaskGroupHeaderAdapter;
 import com.example.mydaibanapp.data.Task;
 import com.example.mydaibanapp.databinding.DialogAddTaskBinding;
 import com.example.mydaibanapp.databinding.FragmentTaskListBinding;
@@ -35,7 +37,10 @@ import java.util.stream.Collectors;
 public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClickListener {
     private FragmentTaskListBinding binding;
     private TaskViewModel viewModel;
-    private TaskAdapter adapter;
+    private TaskAdapter activeAdapter;
+    private TaskAdapter completedAdapter;
+    private TaskGroupHeaderAdapter activeHeaderAdapter;
+    private TaskGroupHeaderAdapter completedHeaderAdapter;
     private int currentFilter = 0; // 0:全部 1:进行中 2:已完成
     private boolean isSearchVisible = false;
     private int currentPriorityFilter = -1; // -1=全部优先级, 0=无, 1=低, 2=中, 3=高
@@ -63,8 +68,17 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
         ((AppCompatActivity) requireActivity()).setSupportActionBar(binding.toolbar);
         ((AppCompatActivity) requireActivity()).getSupportActionBar().setDisplayShowTitleEnabled(false);
 
-        adapter = new TaskAdapter(this);
-        binding.rvTasks.setAdapter(adapter);
+        TaskAdapter.SwipeController swipeController = new TaskAdapter.SwipeController();
+        activeAdapter = new TaskAdapter(this, swipeController);
+        completedAdapter = new TaskAdapter(this, swipeController);
+        activeHeaderAdapter = new TaskGroupHeaderAdapter("未完成");
+        completedHeaderAdapter = new TaskGroupHeaderAdapter("已完成");
+        ConcatAdapter concatAdapter = new ConcatAdapter(
+                activeHeaderAdapter,
+                activeAdapter,
+                completedHeaderAdapter,
+                completedAdapter);
+        binding.rvTasks.setAdapter(concatAdapter);
         binding.rvTasks.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         // 使用Activity级别的ViewModel，实现数据共享
@@ -193,19 +207,16 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
 
     private void refreshList() {
         List<Task> source = isSearchVisible ? cachedSearchResults : cachedAllTasks;
-        List<Task> filtered = applyFilters(source);
-        adapter.submitList(filtered);
-        updateEmptyState(filtered);
+        List<Task> filtered = applyPriorityFilterAndSort(source);
+        List<Task> activeTasks = currentFilter == 2 ? new ArrayList<>() : filterActiveTasks(filtered);
+        List<Task> completedTasks = currentFilter == 1 ? new ArrayList<>() : filterCompletedTasks(filtered);
+        activeAdapter.submitList(activeTasks);
+        completedAdapter.submitList(completedTasks);
+        updateGroupedState(activeTasks, completedTasks);
     }
 
-    private List<Task> applyFilters(List<Task> tasks) {
+    private List<Task> applyPriorityFilterAndSort(List<Task> tasks) {
         List<Task> result = tasks;
-        // 按完成状态筛选
-        if (currentFilter == 1) {
-            result = filterActiveTasks(result);
-        } else if (currentFilter == 2) {
-            result = filterCompletedTasks(result);
-        }
         // 按优先级筛选
         if (currentPriorityFilter >= 0) {
             final int pf = currentPriorityFilter;
@@ -229,11 +240,23 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
         return tasks.stream().filter(Task::isCompleted).collect(Collectors.toList());
     }
 
-    private void updateEmptyState(List<Task> tasks) {
-        if (tasks.isEmpty()) {
+    private void updateGroupedState(List<Task> activeTasks, List<Task> completedTasks) {
+        boolean hasActiveTasks = !activeTasks.isEmpty();
+        boolean hasCompletedTasks = !completedTasks.isEmpty();
+        boolean hasAnyTasks = hasActiveTasks || hasCompletedTasks;
+
+        activeHeaderAdapter.submitCount(activeTasks.size());
+        completedHeaderAdapter.submitCount(completedTasks.size());
+        binding.rvTasks.setVisibility(hasAnyTasks ? View.VISIBLE : View.GONE);
+
+        if (!hasAnyTasks) {
             binding.tvEmptyState.setVisibility(View.VISIBLE);
             if (isSearchVisible) {
                 binding.tvEmptyState.setText("没有找到匹配的任务");
+            } else if (currentFilter == 1 && currentPriorityFilter >= 0) {
+                binding.tvEmptyState.setText("没有符合筛选条件的进行中任务");
+            } else if (currentFilter == 2 && currentPriorityFilter >= 0) {
+                binding.tvEmptyState.setText("没有符合筛选条件的已完成任务");
             } else if (currentPriorityFilter >= 0) {
                 binding.tvEmptyState.setText("该优先级下没有任务");
             } else if (currentFilter == 1) {
@@ -468,12 +491,9 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
 
     @Override
     public void onTaskDelete(Task task) {
-        new AlertDialog.Builder(requireContext())
-                .setTitle("删除任务")
-                .setMessage("确定要删除这个任务吗？")
-                .setPositiveButton("删除", (dialog, which) -> viewModel.deleteTask(task))
-                .setNegativeButton("取消", null)
-                .show();
+        activeAdapter.closeOpenSwipe();
+        completedAdapter.closeOpenSwipe();
+        viewModel.deleteTask(task);
     }
 
     @Override
