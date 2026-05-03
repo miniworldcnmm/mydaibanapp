@@ -9,7 +9,7 @@
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="任务标题">
+        android:hint="@string/hint_task_title">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etTitle"
@@ -22,7 +22,7 @@
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="任务描述（可选）"
+        android:hint="@string/hint_task_description_optional"
         android:layout_marginTop="8dp">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -48,7 +48,7 @@
             android:layout_height="36dp"
             android:src="@drawable/ic_calendar"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="选择日期"
+            android:contentDescription="@string/pick_date"
             app:tint="?attr/colorPrimary" />
 
         <TextView
@@ -57,9 +57,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:text="不设置日期"
+            android:text="@string/no_date_set"
             android:textSize="14sp"
-            android:textColor="@color/dark_gray" />
+            android:textColor="?attr/colorOnSurfaceVariant" />
 
         <ImageButton
             android:id="@+id/btnClearDate"
@@ -67,7 +67,7 @@
             android:layout_height="28dp"
             android:src="@drawable/ic_clear"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="清除日期"
+            android:contentDescription="@string/clear_date"
             android:visibility="gone"
             app:tint="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
@@ -98,7 +98,7 @@
             android:layout_marginStart="8dp"
             android:text="@string/reminder_none"
             android:textSize="14sp"
-            android:textColor="@color/dark_gray" />
+            android:textColor="?attr/colorOnSurfaceVariant" />
 
         <ImageButton
             android:id="@+id/btnClearReminder"
@@ -124,7 +124,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_priority"
-            android:contentDescription="优先级"
+            android:contentDescription="@string/priority_label"
             app:tint="?attr/colorPrimary" />
 
         <com.google.android.material.chip.ChipGroup

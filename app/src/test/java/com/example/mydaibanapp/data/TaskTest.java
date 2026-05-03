@@ -64,6 +64,7 @@ public class TaskTest {
         task1.setCreateTime(1000L);
         task1.setDueDate(2000L);
         task1.setPriority(2);
+        task1.setReminderAt(3000L);
 
         Task task2 = new Task("标题", "描述");
         task2.setId(1);
@@ -71,8 +72,23 @@ public class TaskTest {
         task2.setCreateTime(1000L);
         task2.setDueDate(2000L);
         task2.setPriority(2);
+        task2.setReminderAt(3000L);
 
         assertEquals(task1, task2);
         assertEquals(task1.hashCode(), task2.hashCode());
+    }
+
+    @Test
+    public void testReminderAtNotEqual() {
+        Task task1 = new Task("Test", "Desc");
+        task1.setId(1);
+        task1.setReminderAt(1000L);
+
+        Task task2 = new Task("Test", "Desc");
+        task2.setId(1);
+        task2.setReminderAt(2000L);
+
+        assertNotEquals(task1, task2);
+        assertNotEquals(task1.hashCode(), task2.hashCode());
     }
 }

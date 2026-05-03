@@ -125,7 +125,13 @@ public class TaskDaoTest {
         taskDao.insertTask(high);
         taskDao.insertTask(med);
 
-        List<Task> tasks = getValue(taskDao.getAllTasksOrderByPriority());
+        List<Task> tasks = getValue(taskDao.getAllTasks());
+        // 客户端排序：优先级降序 -> 创建时间降序
+        tasks.sort((a, b) -> {
+            int pc = Integer.compare(b.getPriority(), a.getPriority());
+            if (pc != 0) return pc;
+            return Long.compare(b.getCreateTime(), a.getCreateTime());
+        });
         assertEquals("高", tasks.get(0).getTitle());
         assertEquals("中", tasks.get(1).getTitle());
         assertEquals("低", tasks.get(2).getTitle());

@@ -24,7 +24,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="待完成"
+                android:text="@string/title_pending"
                 android:textSize="24sp"
                 android:textColor="@color/hand_drawn_blue"
                 android:textStyle="bold"
@@ -37,8 +37,8 @@
                 android:src="@drawable/ic_search"
                 android:layout_gravity="end"
                 android:layout_marginEnd="48dp"
-                android:contentDescription="搜索"
-                app:tint="@color/dark_gray" />
+                android:contentDescription="@string/search_label"
+                app:tint="?attr/colorOnSurfaceVariant" />
 
         </com.google.android.material.appbar.MaterialToolbar>
     </com.google.android.material.appbar.AppBarLayout>
@@ -77,9 +77,9 @@
             android:layout_gravity="end|center_vertical"
             android:layout_marginEnd="12dp"
             android:src="@drawable/ic_clear"
-            android:contentDescription="清除搜索"
+            android:contentDescription="@string/clear_search"
             android:visibility="gone"
-            app:tint="@color/dark_gray" />
+            app:tint="?attr/colorOnSurfaceVariant" />
     </FrameLayout>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -97,9 +97,9 @@
         android:id="@+id/tvEmptyState"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="没有找到匹配的任务"
+        android:text="@string/empty_search_result"
         android:textSize="16sp"
-        android:textColor="@color/dark_gray"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/searchOverlay"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -112,7 +112,7 @@
         android:layout_width="56dp"
         android:layout_height="56dp"
         android:src="@drawable/ic_add"
-        android:contentDescription="添加任务"
+        android:contentDescription="@string/add_task"
         app:tint="@color/white"
         app:backgroundTint="@color/hand_drawn_blue"
         app:elevation="0dp"

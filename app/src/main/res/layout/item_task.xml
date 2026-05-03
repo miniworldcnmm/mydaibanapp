@@ -23,7 +23,7 @@
             android:focusable="true"
             android:gravity="center"
             android:minHeight="52dp"
-            android:text="删除"
+            android:text="@string/delete_label"
             android:textColor="@color/white"
             android:textSize="14sp"
             android:textStyle="bold" />

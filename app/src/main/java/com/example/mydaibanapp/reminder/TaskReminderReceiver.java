@@ -30,8 +30,7 @@ public class TaskReminderReceiver extends BroadcastReceiver {
             return;
         }
         int taskId = intent.getIntExtra(TaskReminderScheduler.EXTRA_TASK_ID, -1);
-        long scheduledReminderAt = intent.getLongExtra(TaskReminderScheduler.EXTRA_REMINDER_AT, -1L);
-        if (taskId <= 0 || scheduledReminderAt <= 0) {
+        if (taskId <= 0) {
             return;
         }
 
@@ -41,7 +40,7 @@ public class TaskReminderReceiver extends BroadcastReceiver {
         executorService.execute(() -> {
             try {
                 Task task = AppDatabase.getDatabase(appContext).taskDao().getTaskByIdSync(taskId);
-                if (!shouldShowReminder(task, scheduledReminderAt)) {
+                if (!shouldShowReminder(task)) {
                     return;
                 }
                 if (!hasNotificationPermission(appContext)) {
@@ -56,11 +55,10 @@ public class TaskReminderReceiver extends BroadcastReceiver {
         });
     }
 
-    private boolean shouldShowReminder(Task task, long scheduledReminderAt) {
+    private boolean shouldShowReminder(Task task) {
         return task != null
                 && !task.isCompleted()
                 && task.getReminderAt() != null
-                && task.getReminderAt() == scheduledReminderAt
                 && task.getReminderAt() <= System.currentTimeMillis();
     }
 
@@ -120,4 +118,3 @@ public class TaskReminderReceiver extends BroadcastReceiver {
         }
     }
 }
-

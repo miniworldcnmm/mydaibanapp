@@ -79,9 +79,6 @@ public class TaskReminderScheduler {
         Intent intent = new Intent(appContext, TaskReminderReceiver.class);
         intent.setAction(ACTION_TASK_REMINDER);
         intent.putExtra(EXTRA_TASK_ID, taskId);
-        if (reminderAt != null) {
-            intent.putExtra(EXTRA_REMINDER_AT, reminderAt);
-        }
         return PendingIntent.getBroadcast(
                 appContext,
                 taskId,

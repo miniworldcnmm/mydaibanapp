@@ -83,7 +83,7 @@ public class SwipeRevealLayout extends FrameLayout {
             case MotionEvent.ACTION_MOVE:
                 float dx = ev.getX() - downX;
                 float dy = ev.getY() - downY;
-                if (Math.abs(dx) > touchSlop && Math.abs(dx) > Math.abs(dy)) {
+                if (dx < -touchSlop && Math.abs(dx) > Math.abs(dy)) {
                     startDragging();
                     getParent().requestDisallowInterceptTouchEvent(true);
                     return true;

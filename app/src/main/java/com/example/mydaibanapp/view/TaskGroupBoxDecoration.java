@@ -4,14 +4,12 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.util.TypedValue;
 import android.view.View;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView.LayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
-import com.example.mydaibanapp.R;
 
 public class TaskGroupBoxDecoration extends RecyclerView.ItemDecoration {
     private final Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -26,9 +24,15 @@ public class TaskGroupBoxDecoration extends RecyclerView.ItemDecoration {
         float density = context.getResources().getDisplayMetrics().density;
         radius = 8f * density;
         horizontalInset = Math.round(8f * density);
-        fillPaint.setColor(ContextCompat.getColor(context, R.color.white));
+
+        TypedValue typedValue = new TypedValue();
+        context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorSurface, typedValue, true);
+        fillPaint.setColor(typedValue.data);
         fillPaint.setStyle(Paint.Style.FILL);
-        strokePaint.setColor(ContextCompat.getColor(context, R.color.search_stroke_light));
+
+        TypedValue strokeTv = new TypedValue();
+        context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurfaceVariant, strokeTv, true);
+        strokePaint.setColor(strokeTv.data);
         strokePaint.setStyle(Paint.Style.STROKE);
         strokePaint.setStrokeWidth(Math.max(1f, density));
     }

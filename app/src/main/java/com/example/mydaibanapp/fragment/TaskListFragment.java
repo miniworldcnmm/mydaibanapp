@@ -179,13 +179,15 @@ public class TaskListFragment extends Fragment implements TaskAdapter.OnTaskClic
         binding.searchOverlay.setVisibility(View.VISIBLE);
         binding.searchOverlay.setAlpha(0f);
         binding.searchOverlay.setScaleX(0.5f);
-        binding.searchOverlay.setPivotX(binding.searchOverlay.getWidth() - binding.searchOverlay.getPaddingEnd());
-        binding.searchOverlay.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .setDuration(250)
-                .setInterpolator(new android.view.animation.OvershootInterpolator())
-                .start();
+        binding.searchOverlay.post(() -> {
+            binding.searchOverlay.setPivotX(binding.searchOverlay.getWidth() - binding.searchOverlay.getPaddingEnd());
+            binding.searchOverlay.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .setDuration(250)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator())
+                    .start();
+        });
         binding.etSearch.requestFocus();
         android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
         if (imm != null) imm.showSoftInput(binding.etSearch, 0);
